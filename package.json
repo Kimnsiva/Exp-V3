@@ -1,0 +1,15 @@
+{
+  "name": "personal-monthly-expense-tracker",
+  "version": "1.0.0",
+  "description": "Personal Monthly Expense Tracker with recurring items, credit card installments, and automatic carry-over balance",
+  "scripts": {
+    "dev": "npx -y serve ./"
+  },
+  "keywords": [
+    "finance",
+    "expense-tracker",
+    "spa"
+  ],
+  "author": "Antigravity",
+  "license": "MIT"
+}

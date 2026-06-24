@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Monthly Expense Tracker</title>
+    <!-- Google Fonts: Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                </svg>
+                <div class="brand-text">
+                    <h1>KM</h1>
+
+                </div>
+            </div>
+
+            <nav class="sidebar-menu">
+                <a href="#dashboard" class="menu-item active" id="menu-dashboard">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="9" rx="1" />
+                        <rect x="14" y="3" width="7" height="5" rx="1" />
+                        <rect x="14" y="12" width="7" height="9" rx="1" />
+                        <rect x="3" y="16" width="7" height="5" rx="1" />
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#incomes" class="menu-item" id="menu-incomes">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    <span>Incomes</span>
+                </a>
+                <a href="#deductions" class="menu-item" id="menu-deductions">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                    </svg>
+                    <span>Savings & DCA</span>
+                </a>
+                <a href="#expenses" class="menu-item" id="menu-expenses">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    <span>General Expenses</span>
+                </a>
+                <a href="#installments" class="menu-item" id="menu-installments">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="5" width="20" height="14" rx="2" ry="2" />
+                        <line x1="2" y1="10" x2="22" y2="10" />
+                    </svg>
+                    <span>Credit Card Installments</span>
+                </a>
+                <a href="#settings" class="menu-item" id="menu-settings">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3" />
+                        <path
+                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                    <span>Settings & Backup</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <p class="footer-version">v1.0.0 (Offline Mode)</p>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header with Month Selector -->
+            <header class="content-header">
+                <div class="header-title">
+                    <h2 id="current-view-title">Dashboard</h2>
+                    <p id="current-view-subtitle">Monthly Finance & Savings Overview</p>
+                </div>
+
+                <div class="month-selector-container">
+                    <button class="btn-icon" id="prev-month-btn" title="Previous Month">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15 18 9 12 15 6" />
+                        </svg>
+                    </button>
+                    <div class="month-display">
+                        <span id="selected-month-year">June 2026</span>
+                    </div>
+                    <button class="btn-icon" id="next-month-btn" title="Next Month">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- View 1: Dashboard -->
+            <section id="view-dashboard" class="content-view active-view">
+                <!-- Summary Cards Row -->
+                <div class="summary-cards">
+                    <!-- Card 1: Carry-over -->
+                    <div class="card glass-card card-carry">
+                        <div class="card-header">
+                            <span class="card-label">Balance from Previous Month</span>
+                            <div class="card-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                                    <polyline points="22 4 12 14.01 9 11.01" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="card-value" id="card-carry-value">฿0.00</div>
+                        <div class="card-footer" id="card-carry-status">No carry-over balance</div>
+                    </div>
+
+                    <!-- Card 2: Income -->
+                    <div class="card glass-card card-income">
+                        <div class="card-header">
+                            <span class="card-label">Total Incomes (Gross)</span>
+                            <div class="card-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                                    <polyline points="17 6 23 6 23 12" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="card-value" id="card-income-value">฿0.00</div>
+                        <div class="card-footer" id="card-income-recurring-ratio">Recurring: ฿0.00</div>
+                    </div>
+
+                    <!-- Card 3: Deductions & DCA -->
+                    <div class="card glass-card card-savings">
+                        <div class="card-header">
+                            <span class="card-label">Savings & Deductions (PVD/SSO/DCA)</span>
+                            <div class="card-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="card-value" id="card-savings-value">฿0.00</div>
+                        <div class="card-footer" id="card-take-home-value">Net Salary: ฿0.00</div>
+                    </div>
+
+                    <!-- Card 4: Expenses -->
+                    <div class="card glass-card card-expense">
+                        <div class="card-header">
+                            <span class="card-label">Total Expenses (Incl. Installments)</span>
+                            <div class="card-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" />
+                                    <polyline points="17 18 23 18 23 12" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="card-value" id="card-expense-value">฿0.00</div>
+                        <div class="card-footer" id="card-installment-ratio">Credit Card Installments: ฿0.00</div>
+                    </div>
+
+                    <!-- Card 5: Net Balance -->
+                    <div class="card glass-card card-net">
+                        <div class="card-header">
+                            <span class="card-label">Net Balance</span>
+                            <div class="card-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="1" x2="12" y2="23" />
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="card-value" id="card-net-value">฿0.00</div>
+                        <div class="card-footer" id="card-net-status">Ready to carry over to Next Month</div>
+                    </div>
+                </div>
+
+                <!-- Dashboard Details Section -->
+                <div class="dashboard-details">
+                    <!-- Left: Analytics & Budget Health -->
+                    <div class="details-left">
+                        <div class="glass-card panel">
+                            <h3>Progress & Savings Analysis</h3>
+                            <div class="analytics-metrics">
+                                <!-- Savings Rate -->
+                                <div class="metric-group">
+                                    <div class="metric-header">
+                                        <span>Savings Rate</span>
+                                        <span id="metric-savings-rate-val">0%</span>
+                                    </div>
+                                    <div class="progress-bar-bg">
+                                        <div class="progress-bar-fill progress-savings" id="metric-savings-rate-bar"
+                                            style="width: 0%"></div>
+                                    </div>
+                                    <p class="metric-hint">A good minimum target is 20% of gross income</p>
+                                </div>
+
+                                <!-- Budget Health (Expenses / Net income) -->
+                                <div class="metric-group">
+                                    <div class="metric-header">
+                                        <span>Expense Ratio</span>
+                                        <span id="metric-expense-ratio-val">0%</span>
+                                    </div>
+                                    <div class="progress-bar-bg">
+                                        <div class="progress-bar-fill progress-expense" id="metric-expense-ratio-bar"
+                                            style="width: 0%"></div>
+                                    </div>
+                                    <p class="metric-hint">Ratio of expenses to net income after savings</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Expenses Breakdown Chart -->
+                        <div class="glass-card panel chart-panel">
+                            <h3>Expenses by Category</h3>
+                            <div class="chart-container">
+                                <div class="chart-wrapper">
+                                    <!-- Dynamic SVG Donut Chart -->
+                                    <svg viewBox="0 0 200 200" class="donut-chart" id="svg-donut-chart">
+                                        <circle cx="100" cy="100" r="70" class="chart-bg" />
+                                        <g id="donut-segments"></g>
+                                    </svg>
+                                    <div class="chart-center-text">
+                                        <span class="center-title">Expenses</span>
+                                        <span class="center-value" id="chart-center-expense">฿0</span>
+                                    </div>
+                                </div>
+                                <div class="chart-legend" id="chart-legend-container">
+                                    <!-- Dynamic Legend Items -->
+                                    <div class="no-data-msg">No expenses this month</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Quick Summary of Current Month Items -->
+                    <div class="details-right glass-card panel">
+                        <div class="panel-header-action">
+                            <h3>Monthly Summary</h3>
+                        </div>
+                        <div class="quick-list-container">
+                            <div class="quick-list-section">
+                                <h4 class="quick-sec-title sec-income">Incomes This Month</h4>
+                                <ul id="quick-income-list" class="quick-ul-list">
+                                    <li class="empty-item">No income data</li>
+                                </ul>
+                            </div>
+                            <div class="quick-list-section">
+                                <h4 class="quick-sec-title sec-savings">Deductions & DCA This Month</h4>
+                                <ul id="quick-savings-list" class="quick-ul-list">
+                                    <li class="empty-item">No savings deductions</li>
+                                </ul>
+                            </div>
+                            <div class="quick-list-section">
+                                <h4 class="quick-sec-title sec-expense">Expenses & Installments this month</h4>
+                                <ul id="quick-expense-list" class="quick-ul-list">
+                                    <li class="empty-item">No Expense Data</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- View 2: Incomes -->
+            <section id="view-incomes" class="content-view">
+                <!-- Salary Block -->
+                <div class="glass-card panel panel-form mb-6">
+                    <h3>Primary Income (Salary)</h3>
+                    <p class="panel-description">Base salary used for Provident Fund and Social Security deductions.</p>
+                    <form id="salary-form" class="salary-setup-form">
+                        <div class="form-row">
+                            <div class="form-group flex-1">
+                                <label for="input-base-salary">Base Salary (THB/Month)</label>
+                                <div class="input-with-symbol">
+                                    <span class="input-symbol">฿</span>
+                                    <input type="number" id="input-base-salary" placeholder="e.g., 30000" min="0"
+                                        required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-auto-height">Save Salary</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Additional Incomes -->
+                <div class="glass-card panel">
+                    <div class="panel-header-action">
+                        <h3>Additional & Temporary Incomes</h3>
+                        <button class="btn btn-secondary btn-icon-text" id="btn-add-income-modal">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19" />
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                            <span>Add Other Income</span>
+                        </button>
+                    </div>
+                    <p class="panel-description">Extra incomes this month such as freelance, bonuses, cashback, or
+                        dividends.</p>
+
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Type</th>
+                                    <th>Date Added</th>
+                                    <th class="text-right">Amount</th>
+                                    <th class="text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="income-table-body">
+                                <tr>
+                                    <td colspan="5" class="text-center no-data">No additional income data this month
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- View 3: Investments & Deductions -->
+            <section id="view-deductions" class="content-view">
+                <!-- Salary-linked Deductions Configurations -->
+                <div class="glass-card panel panel-form mb-6">
+                    <h3>Salary-linked Deductions (Welfare)</h3>
+                    <p class="panel-description">Automatically calculates and deducts employee savings from the
+                        configured base salary.</p>
+
+                    <div class="deductions-grid">
+                        <!-- Provident Fund Box -->
+                        <div class="config-box">
+                            <h4 class="config-box-title">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                                    <circle cx="9" cy="7" r="4" />
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                                </svg>
+                                <span>Provident Fund (PVD)</span>
+                            </h4>
+                            <div class="config-inputs">
+                                <div class="radio-group mb-4">
+                                    <label class="radio-label">
+                                        <input type="radio" name="pvd-type" value="percent" checked
+                                            id="pvd-type-percent">
+                                        <span>Percentage (%)</span>
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="pvd-type" value="fixed" id="pvd-type-fixed">
+                                        <span>Fixed Amount</span>
+                                    </label>
+                                </div>
+                                <div class="form-group" id="pvd-val-percent-group">
+                                    <label for="pvd-percent-input">Contribution Rate (%)</label>
+                                    <div class="input-with-symbol">
+                                        <input type="number" id="pvd-percent-input" value="3" min="0" max="15"
+                                            step="0.5">
+                                        <span class="input-symbol">%</span>
+                                    </div>
+                                </div>
+                                <div class="form-group hidden" id="pvd-val-fixed-group">
+                                    <label for="pvd-fixed-input">Monthly Accumulated Amount</label>
+                                    <div class="input-with-symbol">
+                                        <span class="input-symbol">฿</span>
+                                        <input type="number" id="pvd-fixed-input" value="0" min="0">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Social Security Box -->
+                        <div class="config-box">
+                            <h4 class="config-box-title">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                                </svg>
+                                <span>Social Security (SSO)</span>
+                            </h4>
+                            <div class="config-inputs">
+                                <div class="radio-group mb-4">
+                                    <label class="radio-label">
+                                        <input type="radio" name="sso-type" value="auto" checked id="sso-type-auto">
+                                        <span>Auto Calculate (5% up to 750฿)</span>
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="sso-type" value="fixed" id="sso-type-fixed">
+                                        <span>Custom Amount</span>
+                                    </label>
+                                </div>
+                                <div class="form-group hidden" id="sso-val-fixed-group">
+                                    <label for="sso-fixed-input">Monthly Deducted Amount</label>
+                                    <div class="input-with-symbol">
+                                        <span class="input-symbol">฿</span>
+                                        <input type="number" id="sso-fixed-input" value="750" min="0" max="750">
+                                    </div>
+                                </div>
+                                <p class="config-hint" id="sso-auto-hint">SSO deducts 5% of salary, capped at a 15,000
+                                    THB base (Max 750 THB).</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-right mt-4">
+                        <button class="btn btn-primary" id="btn-save-welfare">Save Deductions Settings</button>
+                    </div>
+                </div>
+
+                <!-- DCA Section -->
+                <div class="glass-card panel">
+                    <div class="panel-header-action">
+                        <h3>Monthly Investments (DCA)</h3>
+                        <button class="btn btn-secondary btn-icon-text" id="btn-add-dca-modal">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19" />
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                            <span>Add DCA Item</span>
+                        </button>
+                    </div>
+                    <p class="panel-description">Disciplined monthly investments like Stocks, Mutual Funds (SSF/RMF),
+                        Co-ops, or Gold.</p>
+
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Investment Item</th>
+                                    <th>Asset Class</th>
+                                    <th>TypeItem</th>
+                                    <th>Date Added</th>
+                                    <th class="text-right">Investment Amount</th>
+                                    <th class="text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dca-table-body">
+                                <tr>
+                                    <td colspan="6" class="text-center no-data">No DCA investments this month</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- View 4: General Expenses -->
+            <section id="view-expenses" class="content-view">
+                <div class="glass-card panel">
+                    <div class="panel-header-action">
+                        <h3>ItemGeneral Expenses</h3>
+                        <button class="btn btn-secondary btn-icon-text" id="btn-add-expense-modal">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19" />
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                            <span>Add Expense</span>
+                        </button>
+                    </div>
+                    <p class="panel-description">Log general expenses such as rent, food, travel, groceries, or
+                        temporary costs.</p>
+
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Expense Item</th>
+                                    <th>TypeExpenses</th>
+                                    <th>Category</th>
+                                    <th>Date Spent</th>
+                                    <th class="text-right">Amount</th>
+                                    <th class="text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="expense-table-body">
+                                <tr>
+                                    <td colspan="6" class="text-center no-data">No expenses this month</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- View 5: Credit Card Installments -->
+            <section id="view-installments" class="content-view">
+                <div class="glass-card panel">
+                    <div class="panel-header-action">
+                        <h3>Credit Card Installment Item</h3>
+                        <button class="btn btn-secondary btn-icon-text" id="btn-add-installment-modal">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19" />
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                            <span>Add Credit Card Installment</span>
+                        </button>
+                    </div>
+                    <p class="panel-description">Log monthly installments. These will automatically be added to your
+                        monthly expenses until completed.</p>
+
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Product/Service Item</th>
+                                    <th>Category</th>
+                                    <th>Total Value</th>
+                                    <th>Monthly Amount</th>
+                                    <th>Total Months</th>
+                                    <th>Start Month</th>
+                                    <th>Status This Month</th>
+                                    <th class="text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="installment-table-body">
+                                <tr>
+                                    <td colspan="8" class="text-center no-data">No installments this month</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- View 6: Settings & Backup -->
+            <section id="view-settings" class="content-view">
+                <!-- Carry-over Settings -->
+                <div class="glass-card panel mb-6">
+                    <h3>App Settings & Calculations</h3>
+                    <p class="panel-description">Configure accounting mechanisms and app behaviors.</p>
+
+                    <div class="setting-row">
+                        <div class="setting-text">
+                            <h4>Enable Automatic Carry-over Balance</h4>
+                            <p>Net balance (positive or negative) will be carried over to the next month to accumulate
+                                true cash flow.</p>
+                        </div>
+                        <div class="setting-action">
+                            <label class="switch">
+                                <input type="checkbox" id="setting-carry-over-toggle" checked>
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Backup & Reset -->
+                <div class="glass-card panel">
+                    <h3>Database and Backup Actions (Data Management)</h3>
+                    <p class="panel-description">All data is saved locally in your browser (LocalStorage). Nothing is
+                        sent to external clouds. Backup regularly.</p>
+
+                    <div class="settings-actions-grid">
+                        <div class="settings-action-card">
+                            <h4>Export Data</h4>
+                            <p>Save all income/expense history as a JSON file to open on another device.</p>
+                            <button class="btn btn-secondary mt-4 w-full" id="btn-export-data">Download Backup File
+                                (.json)</button>
+                        </div>
+
+                        <div class="settings-action-card">
+                            <h4>Import Data</h4>
+                            <p>Import income/expense history from a backup file (.json) to replace data on this device.
+                            </p>
+                            <div class="file-input-wrapper mt-4">
+                                <button class="btn btn-secondary w-full" id="btn-trigger-file">Select Backup
+                                    File</button>
+                                <input type="file" id="file-import-input" accept=".json" class="hidden">
+                            </div>
+                            <span class="file-name-label" id="imported-file-name">No file selected</span>
+                        </div>
+
+                        <div class="settings-action-card border-danger">
+                            <h4 class="text-danger">Reset All Data</h4>
+                            <p>Clear all records, installments, and savings. This action is permanent and cannot be
+                                undone.</p>
+                            <button class="btn btn-danger mt-4 w-full" id="btn-reset-data">Wipe All History</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- ==================== MODALS ==================== -->
+
+    <!-- Modal 1: Add/Edit Income -->
+    <div class="modal-overlay" id="modal-income">
+        <div class="modal-container glass-card">
+            <div class="modal-header">
+                <h3 id="income-modal-title">Add Additional Income</h3>
+                <button class="btn-close-modal" id="btn-close-income-modal">&times;</button>
+            </div>
+            <form id="income-modal-form">
+                <input type="hidden" id="modal-income-id">
+
+                <div class="form-group mb-4">
+                    <label for="modal-income-title">Income Item Name <span class="required">*</span></label>
+                    <input type="text" id="modal-income-title" placeholder="e.g., Freelance, Bonus" required>
+                </div>
+
+                <div class="form-row mb-4">
+                    <div class="form-group flex-1">
+                        <label for="modal-income-amount">Income Amount (THB) <span class="required">*</span></label>
+                        <div class="input-with-symbol">
+                            <span class="input-symbol">฿</span>
+                            <input type="number" id="modal-income-amount" placeholder="0" min="1" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group flex-1">
+                        <label for="modal-income-type">Income Type</label>
+                        <select id="modal-income-type">
+                            <option value="one-time">One-time (This month only)</option>
+                            <option value="recurring">Recurring (Every month)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group mb-4" id="modal-income-date-group">
+                    <label for="modal-income-date">Date Received <span class="required">*</span></label>
+                    <input type="date" id="modal-income-date" required>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-cancel" id="btn-cancel-income-modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btn-save-income">Save Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 2: Add/Edit Expense -->
+    <div class="modal-overlay" id="modal-expense">
+        <div class="modal-container glass-card">
+            <div class="modal-header">
+                <h3 id="expense-modal-title">Save General Expenses</h3>
+                <button class="btn-close-modal" id="btn-close-expense-modal">&times;</button>
+            </div>
+            <form id="expense-modal-form">
+                <input type="hidden" id="modal-expense-id">
+
+                <div class="form-group mb-4">
+                    <label for="modal-expense-title">Expense Item Name <span class="required">*</span></label>
+                    <input type="text" id="modal-expense-title" placeholder="e.g., Rent, Dinner" required>
+                </div>
+
+                <div class="form-row mb-4">
+                    <div class="form-group flex-1">
+                        <label for="modal-expense-amount">Amount (THB) <span class="required">*</span></label>
+                        <div class="input-with-symbol">
+                            <span class="input-symbol">฿</span>
+                            <input type="number" id="modal-expense-amount" placeholder="0" min="1" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group flex-1">
+                        <label for="modal-expense-type">TypeExpenses</label>
+                        <select id="modal-expense-type">
+                            <option value="one-time">One-time (This month only)</option>
+                            <option value="recurring">Pay Recurring Monthly (Fixed Expenses)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row mb-4">
+                    <div class="form-group flex-1">
+                        <label for="modal-expense-category">CategoryExpenses</label>
+                        <select id="modal-expense-category">
+                            <option value="food">Food & Beverage</option>
+                            <option value="housing">Housing & Utilities</option>
+                            <option value="travel">Transportation & Gas</option>
+                            <option value="personal">Personal & Shopping</option>
+                            <option value="health">Health & Medical</option>
+                            <option value="entertainment">Entertainment & Travel</option>
+                            <option value="education">Education & Upskill</option>
+                            <option value="family">Family & Care</option>
+                            <option value="other">Others</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group flex-1" id="modal-expense-date-group">
+                        <label for="modal-expense-date">Date Spent <span class="required">*</span></label>
+                        <input type="date" id="modal-expense-date" required>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-cancel" id="btn-cancel-expense-modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btn-save-expense">Save Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 3: Add/Edit DCA Investment -->
+    <div class="modal-overlay" id="modal-dca">
+        <div class="modal-container glass-card">
+            <div class="modal-header">
+                <h3 id="dca-modal-title">Save DCA Investment Item</h3>
+                <button class="btn-close-modal" id="btn-close-dca-modal">&times;</button>
+            </div>
+            <form id="dca-modal-form">
+                <input type="hidden" id="modal-dca-id">
+
+                <div class="form-group mb-4">
+                    <label for="modal-dca-title">Fund/Asset Name <span class="required">*</span></label>
+                    <input type="text" id="modal-dca-title"
+                        placeholder="e.g., Dividend Stock, ThaiESG Mutual Fund, Gold Savings" required>
+                </div>
+
+                <div class="form-row mb-4">
+                    <div class="form-group flex-1">
+                        <label for="modal-dca-amount">Monthly Investment Amount (THB) <span
+                                class="required">*</span></label>
+                        <div class="input-with-symbol">
+                            <span class="input-symbol">฿</span>
+                            <input type="number" id="modal-dca-amount" placeholder="0" min="1" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group flex-1">
+                        <label for="modal-dca-category">Investment Asset Type</label>
+                        <select id="modal-dca-category">
+                            <option value="fund">Mutual Fund (SSF/RMF/ThaiESG/General)</option>
+                            <option value="stock">Individual Stock (Stocks)</option>
+                            <option value="gold">Gold (Gold Savings)</option>
+                            <option value="coop">Savings Cooperative</option>
+                            <option value="crypto">Digital Asset (Crypto/Other)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row mb-4">
+                    <div class="form-group flex-1">
+                        <label for="modal-dca-type">DCA Format</label>
+                        <select id="modal-dca-type">
+                            <option value="recurring">Continuous Monthly Investment (Recurring)</option>
+                            <option value="one-time">Invest only this month (One-time)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group flex-1" id="modal-dca-date-group">
+                        <label for="modal-dca-date">Investment Deduction Date <span class="required">*</span></label>
+                        <input type="date" id="modal-dca-date" required>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-cancel" id="btn-cancel-dca-modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btn-save-dca">Save Item DCA</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 4: Add/Edit Credit Card Installment -->
+    <div class="modal-overlay" id="modal-installment">
+        <div class="modal-container glass-card">
+            <div class="modal-header">
+                <h3 id="installment-modal-title">Add Credit Card Installment</h3>
+                <button class="btn-close-modal" id="btn-close-installment-modal">&times;</button>
+            </div>
+            <form id="installment-modal-form">
+                <input type="hidden" id="modal-installment-id">
+
+                <div class="form-group mb-4">
+                    <label for="modal-installment-title">Product/Service on Installment <span
+                            class="required">*</span></label>
+                    <input type="text" id="modal-installment-title"
+                        placeholder="e.g., Buy iPhone 17 Pro, Tier 1 Car Insurance" required>
+                </div>
+
+                <div class="form-row mb-4">
+                    <div class="form-group flex-1">
+                        <label for="modal-installment-total-amount">Total Product Value (THB) <span
+                                class="required">*</span></label>
+                        <div class="input-with-symbol">
+                            <span class="input-symbol">฿</span>
+                            <input type="number" id="modal-installment-total-amount" placeholder="0" min="1" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group flex-1">
+                        <label for="modal-installment-interest">Monthly Interest Rate (%)</label>
+                        <div class="input-with-symbol">
+                            <input type="number" id="modal-installment-interest" placeholder="0" step="0.01" min="0"
+                                value="0" required>
+                            <span class="input-symbol">%</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group flex-1">
+                        <label for="modal-installment-months">Number of Installment Months <span
+                                class="required">*</span></label>
+                        <select id="modal-installment-months">
+                            <option value="3">3 Months</option>
+                            <option value="4">4 Months</option>
+                            <option value="6">6 Months</option>
+                            <option value="10" selected>10 Months</option>
+                            <option value="12">12 Months</option>
+                            <option value="18">18 Months</option>
+                            <option value="24">24 Months</option>
+                            <option value="36">36 Months</option>
+                            <option value="custom">Custom (Enter Total Months)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row mb-4">
+                    <div class="form-group flex-1 hidden" id="modal-installment-months-custom-group">
+                        <label for="modal-installment-months-custom">Specify Total Months <span
+                                class="required">*</span></label>
+                        <input type="number" id="modal-installment-months-custom" min="1" value="10">
+                    </div>
+
+                    <div class="form-group flex-1">
+                        <label for="modal-installment-monthly">Monthly Installment (THB/Month) <span
+                                class="required">*</span></label>
+                        <div class="input-with-symbol">
+                            <span class="input-symbol">฿</span>
+                            <input type="number" id="modal-installment-monthly" placeholder="Auto Calculate" min="1"
+                                required>
+                        </div>
+                        <span class="field-info" id="installment-calc-info">Equal average per installment (0%
+                            Interest)</span>
+                    </div>
+
+                    <div class="form-group flex-1">
+                        <label for="modal-installment-start">First month of payment <span
+                                class="required">*</span></label>
+                        <input type="month" id="modal-installment-start" required>
+                    </div>
+                </div>
+
+                <div class="form-row mb-4">
+                    <div class="form-group flex-1">
+                        <label for="modal-installment-category">Category</label>
+                        <select id="modal-installment-category">
+                            <option value="personal">IT & Shopping</option>
+                            <option value="housing">Furniture & Appliances</option>
+                            <option value="travel">Travel & Transportation</option>
+                            <option value="health">Medical & Insurance</option>
+                            <option value="education">Education</option>
+                            <option value="other">Others</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-cancel" id="btn-cancel-installment-modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btn-save-installment">Save Installment
+                        Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Firebase SDK (Compat mode) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
