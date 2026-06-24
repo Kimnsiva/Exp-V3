@@ -18,9 +18,10 @@
         <!-- Auth Overlay (Email Login) -->
         <div id="auth-overlay" class="auth-overlay" style="display: none;">
             <div class="auth-card">
-                <div class="auth-header">
+                <div class="auth-header" style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                    <img src="logo.jpg" alt="KimCash" style="width: 80px; height: 80px; border-radius: 12px; margin-bottom: 16px; object-fit: contain; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
                     <h2>KimCash</h2>
-                    <p>Sign in with your email</p>
+                    <p style="margin-top: 4px;">Sign in with your email</p>
                 </div>
                 <div id="auth-error-msg" class="text-danger mb-4" style="display: none; text-align: center; font-size: 0.8rem;"></div>
 
@@ -41,10 +42,8 @@
 
         <!-- Sidebar Navigation -->
         <aside class="sidebar">
-            <div class="sidebar-brand">
-                <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-                </svg>
+            <div class="sidebar-brand" style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
+                <img src="logo.jpg" alt="KM Logo" style="width: 32px; height: 32px; border-radius: 6px; object-fit: contain;">
                 <div class="brand-text">
                     <h1>KimCash</h1>
                 </div>
