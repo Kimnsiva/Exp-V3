@@ -38,10 +38,37 @@ if (isFirebaseConfigured) {
     db = firebase.firestore();
     auth = firebase.auth();
 
-    // เข้าสู่ระบบแบบไม่ระบุตัวตน (Anonymous) ไปก่อน เพื่อให้ Security Rules ตรวจสอบ User ID ได้
-    // (หากต้องการทำระบบ Login ด้วย Email/Google ในอนาคต ค่อยเปลี่ยนส่วนนี้)
-    auth.signInAnonymously().catch((error) => {
-        console.error("Firebase Auth Error:", error);
+    // Setup Auth State Observer
+    auth.onAuthStateChanged((user) => {
+        const overlay = document.getElementById("auth-overlay");
+        const logoutBtn = document.getElementById("menu-logout");
+        if (user) {
+            // Logged in
+            if (overlay) overlay.style.display = "none";
+            if (logoutBtn) logoutBtn.style.display = "flex";
+            
+            // Sync data from Cloud
+            db.collection("users").doc(user.uid).get().then(doc => {
+                if (doc.exists) {
+                    state = { ...state, ...doc.data() };
+                    localStorage.setItem("fintrack_state", JSON.stringify(state));
+                    updateAppView();
+                }
+            }).catch(err => console.error("Error loading from Firebase:", err));
+            
+            // Listen for Real-time changes
+            db.collection("users").doc(user.uid).onSnapshot(doc => {
+                if (doc.exists) {
+                    state = { ...state, ...doc.data() };
+                    localStorage.setItem("fintrack_state", JSON.stringify(state));
+                    updateAppView();
+                }
+            });
+        } else {
+            // Not logged in
+            if (overlay) overlay.style.display = "flex";
+            if (logoutBtn) logoutBtn.style.display = "none";
+        }
     });
 }
 
@@ -105,30 +132,7 @@ function loadStateFromLocalStorage() {
         }
     }
 
-    // หากเชื่อมต่อ Firebase ให้ซิงค์ข้อมูลจาก Cloud มาทับ
-    if (isFirebaseConfigured && auth) {
-        auth.onAuthStateChanged((user) => {
-            if (user) {
-                // ดึงข้อมูลครั้งแรก
-                db.collection("users").doc(user.uid).get().then(doc => {
-                    if (doc.exists) {
-                        state = { ...state, ...doc.data() };
-                        localStorage.setItem("fintrack_state", JSON.stringify(state)); // อัปเดตลงเครื่อง
-                        updateAppView(); // รีเฟรชหน้าจอใหม่
-                    }
-                }).catch(err => console.error("Error loading from Firebase:", err));
-
-                // ฟังการเปลี่ยนแปลงข้อมูลแบบ Real-time
-                db.collection("users").doc(user.uid).onSnapshot(doc => {
-                    if (doc.exists) {
-                        state = { ...state, ...doc.data() };
-                        localStorage.setItem("fintrack_state", JSON.stringify(state));
-                        updateAppView();
-                    }
-                });
-            }
-        });
-    }
+    // การซิงค์ข้อมูลจาก Firebase ถูกย้ายไปที่ onAuthStateChanged ด้านบนแล้ว เพื่อให้แสดงผล Login ได้ถูกต้อง
 }
 
 // ==================== FINANCIAL CALCULATION ENGINE ====================
@@ -1054,8 +1058,90 @@ window.deleteInstallment = function (id) {
 
 // ==================== EVENT LISTENERS SETUP ====================
 function setupEventListeners() {
+    // 0. Auth Listeners
+    let isRegisterMode = false;
+    const authForm = document.getElementById("auth-form");
+    const toggleRegisterBtn = document.getElementById("btn-toggle-register");
+    const authSubmitBtn = document.getElementById("btn-login-submit");
+    const authErrorMsg = document.getElementById("auth-error-msg");
+    const logoutBtn = document.getElementById("menu-logout");
+
+    if (toggleRegisterBtn) {
+        toggleRegisterBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            isRegisterMode = !isRegisterMode;
+            if (isRegisterMode) {
+                authSubmitBtn.textContent = "สมัครสมาชิก";
+                toggleRegisterBtn.textContent = "เข้าสู่ระบบ";
+                toggleRegisterBtn.previousElementSibling.textContent = "มีบัญชีอยู่แล้ว? ";
+            } else {
+                authSubmitBtn.textContent = "เข้าสู่ระบบ";
+                toggleRegisterBtn.textContent = "สมัครสมาชิก";
+                toggleRegisterBtn.previousElementSibling.textContent = "ยังไม่มีบัญชีใช่ไหม? ";
+            }
+            authErrorMsg.style.display = "none";
+        });
+    }
+
+    if (authForm) {
+        authForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const email = document.getElementById("auth-email").value;
+            const password = document.getElementById("auth-password").value;
+            
+            authSubmitBtn.disabled = true;
+            authSubmitBtn.textContent = "กำลังดำเนินการ...";
+            authErrorMsg.style.display = "none";
+
+            if (isRegisterMode) {
+                auth.createUserWithEmailAndPassword(email, password)
+                    .then(() => {
+                        showToast("สมัครสมาชิกสำเร็จ", "success");
+                        // User will be auto logged in and onAuthStateChanged will hide the modal
+                    })
+                    .catch((error) => {
+                        authErrorMsg.textContent = error.message;
+                        authErrorMsg.style.display = "block";
+                        authSubmitBtn.disabled = false;
+                        authSubmitBtn.textContent = "สมัครสมาชิก";
+                    });
+            } else {
+                auth.signInWithEmailAndPassword(email, password)
+                    .then(() => {
+                        showToast("เข้าสู่ระบบสำเร็จ", "success");
+                    })
+                    .catch((error) => {
+                        authErrorMsg.textContent = error.message;
+                        authErrorMsg.style.display = "block";
+                        authSubmitBtn.disabled = false;
+                        authSubmitBtn.textContent = "เข้าสู่ระบบ";
+                    });
+            }
+        });
+    }
+
+    if (logoutBtn) {
+        logoutBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            if (confirm("ต้องการออกจากระบบหรือไม่?")) {
+                auth.signOut().then(() => {
+                    showToast("ออกจากระบบสำเร็จ", "success");
+                    // Reset state locally so another user's data isn't left behind
+                    state = {
+                        selectedMonth: state.selectedMonth,
+                        baseSalary: 0, incomes: [], expenses: [], installments: [], dcaList: [],
+                        welfareSettings: { pvdType: "percent", pvdValue: 3, ssoType: "auto", ssoValue: 750 },
+                        carryOverEnabled: true
+                    };
+                    updateAppView();
+                });
+            }
+        });
+    }
+
     // 1. Sidebar Navigation
     document.querySelectorAll(".sidebar-menu .menu-item").forEach(item => {
+        if (item.id === "menu-logout") return; // Skip logout for normal view switching
         item.addEventListener("click", (e) => {
             e.preventDefault();
             const viewId = item.getAttribute("href").slice(1);
