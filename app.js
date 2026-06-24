@@ -56,51 +56,70 @@ if (isFirebaseConfigured) {
 
             const userRef = db.collection("users").doc(user.uid);
 
-            // Migration from legacy single document format to subcollections
+            // Migration from legacy single document format to subcollections or initial upload
             userRef.get().then(doc => {
-                if (doc.exists) {
-                    const data = doc.data();
-                    if (!data.migratedToSubcollections && (data.incomes || data.expenses || data.installments || data.dcaList)) {
-                        console.log("Migrating legacy data to subcollections...");
-                        const batch = db.batch();
+                const needsMigration = doc.exists && !doc.data().migratedToSubcollections;
+                const isEmptyFirestore = !doc.exists;
 
-                        if (Array.isArray(data.incomes)) {
-                            data.incomes.forEach(item => {
-                                const ref = userRef.collection("incomes").doc(item.id || generateId());
-                                batch.set(ref, item);
-                            });
-                        }
-                        if (Array.isArray(data.expenses)) {
-                            data.expenses.forEach(item => {
-                                const ref = userRef.collection("expenses").doc(item.id || generateId());
-                                batch.set(ref, item);
-                            });
-                        }
-                        if (Array.isArray(data.installments)) {
-                            data.installments.forEach(item => {
-                                const ref = userRef.collection("installments").doc(item.id || generateId());
-                                batch.set(ref, item);
-                            });
-                        }
-                        if (Array.isArray(data.dcaList)) {
-                            data.dcaList.forEach(item => {
-                                const ref = userRef.collection("dcaList").doc(item.id || generateId());
-                                batch.set(ref, item);
-                            });
-                        }
+                if (needsMigration || isEmptyFirestore) {
+                    console.log("Initializing/Migrating data to subcollections...");
+                    const batch = db.batch();
+                    
+                    // Retrieve items from local state (loaded from LocalStorage)
+                    const dataObj = doc.exists ? doc.data() : state;
 
-                        batch.set(userRef, {
-                            migratedToSubcollections: true,
-                            incomes: firebase.firestore.FieldValue.delete(),
-                            expenses: firebase.firestore.FieldValue.delete(),
-                            installments: firebase.firestore.FieldValue.delete(),
-                            dcaList: firebase.firestore.FieldValue.delete()
-                        }, { merge: true });
+                    const incomesList = doc.exists ? dataObj.incomes : state.incomes;
+                    const expensesList = doc.exists ? dataObj.expenses : state.expenses;
+                    const installmentsList = doc.exists ? dataObj.installments : state.installments;
+                    const dcaList = doc.exists ? dataObj.dcaList : state.dcaList;
+                    const creditCardsList = state.creditCards;
 
-                        batch.commit()
-                            .then(() => console.log("Migration to subcollections complete!"))
-                            .catch(err => console.error("Error performing data migration:", err));
+                    if (Array.isArray(incomesList)) {
+                        incomesList.forEach(item => {
+                            const ref = userRef.collection("incomes").doc(item.id || generateId());
+                            batch.set(ref, item);
+                        });
                     }
+                    if (Array.isArray(expensesList)) {
+                        expensesList.forEach(item => {
+                            const ref = userRef.collection("expenses").doc(item.id || generateId());
+                            batch.set(ref, item);
+                        });
+                    }
+                    if (Array.isArray(installmentsList)) {
+                        installmentsList.forEach(item => {
+                            const ref = userRef.collection("installments").doc(item.id || generateId());
+                            batch.set(ref, item);
+                        });
+                    }
+                    if (Array.isArray(dcaList)) {
+                        dcaList.forEach(item => {
+                            const ref = userRef.collection("dcaList").doc(item.id || generateId());
+                            batch.set(ref, item);
+                        });
+                    }
+                    if (Array.isArray(creditCardsList)) {
+                        creditCardsList.forEach(item => {
+                            const ref = userRef.collection("creditCards").doc(item.id || generateId());
+                            batch.set(ref, item);
+                        });
+                    }
+
+                    // Save settings and mark as migrated
+                    batch.set(userRef, {
+                        migratedToSubcollections: true,
+                        baseSalary: state.baseSalary,
+                        welfareSettings: state.welfareSettings,
+                        carryOverEnabled: state.carryOverEnabled,
+                        incomes: firebase.firestore.FieldValue.delete(),
+                        expenses: firebase.firestore.FieldValue.delete(),
+                        installments: firebase.firestore.FieldValue.delete(),
+                        dcaList: firebase.firestore.FieldValue.delete()
+                    }, { merge: true });
+
+                    batch.commit()
+                        .then(() => console.log("Initial Firestore upload/migration complete!"))
+                        .catch(err => console.error("Error performing initial upload:", err));
                 }
             }).catch(err => console.error("Error reading user doc for migration:", err));
 
