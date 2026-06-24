@@ -54,6 +54,7 @@ if (isFirebaseConfigured) {
             if (mobileForceSyncBtn) mobileForceSyncBtn.style.display = "flex";
 
             db.collection("users").doc(user.uid).onSnapshot(doc => {
+                console.log("Firebase data loaded for user:", user.uid, doc.data());
                 if (doc.exists) {
                     state = { ...state, ...doc.data() };
                     localStorage.setItem("kimcash_state", JSON.stringify(state));
