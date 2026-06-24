@@ -982,21 +982,6 @@ function setupEventListeners() {
 
     if (emailAuthForm) {
         const btnLoginEmail = document.getElementById("btn-login-email");
-        const authModeText = document.getElementById("btn-toggle-register").parentElement;
-
-        authModeText.addEventListener("click", (e) => {
-            if (e.target.id === "btn-toggle-register") {
-                e.preventDefault();
-                isLoginMode = !isLoginMode;
-                if (isLoginMode) {
-                    btnLoginEmail.textContent = "Sign In";
-                    authModeText.innerHTML = `No account? <a href="#" id="btn-toggle-register" style="color: var(--color-primary); font-weight: 500;">Register here</a>`;
-                } else {
-                    btnLoginEmail.textContent = "Register";
-                    authModeText.innerHTML = `Already have an account? <a href="#" id="btn-toggle-register" style="color: var(--color-primary); font-weight: 500;">Sign in here</a>`;
-                }
-            }
-        });
 
         emailAuthForm.addEventListener("submit", (e) => {
             e.preventDefault();
@@ -1007,31 +992,17 @@ function setupEventListeners() {
             btnLoginEmail.textContent = "Processing...";
             authErrorMsg.style.display = "none";
 
-            if (isLoginMode) {
-                auth.signInWithEmailAndPassword(email, password)
-                    .then(() => {
-                        showToast("Signed in successfully", "success");
-                        btnLoginEmail.disabled = false;
-                        btnLoginEmail.textContent = "Sign In";
-                    }).catch((error) => {
-                        authErrorMsg.textContent = error.message;
-                        authErrorMsg.style.display = "block";
-                        btnLoginEmail.disabled = false;
-                        btnLoginEmail.textContent = "Sign In";
-                    });
-            } else {
-                auth.createUserWithEmailAndPassword(email, password)
-                    .then(() => {
-                        showToast("Account created successfully", "success");
-                        btnLoginEmail.disabled = false;
-                        btnLoginEmail.textContent = "Register";
-                    }).catch((error) => {
-                        authErrorMsg.textContent = error.message;
-                        authErrorMsg.style.display = "block";
-                        btnLoginEmail.disabled = false;
-                        btnLoginEmail.textContent = "Register";
-                    });
-            }
+            auth.signInWithEmailAndPassword(email, password)
+                .then(() => {
+                    showToast("Signed in successfully", "success");
+                    btnLoginEmail.disabled = false;
+                    btnLoginEmail.textContent = "Sign In";
+                }).catch((error) => {
+                    authErrorMsg.textContent = error.message;
+                    authErrorMsg.style.display = "block";
+                    btnLoginEmail.disabled = false;
+                    btnLoginEmail.textContent = "Sign In";
+                });
         });
     }
 
