@@ -43,6 +43,7 @@ if (isFirebaseConfigured) {
         const forceSyncBtn = document.getElementById("menu-force-sync");
         const mobileLogoutBtn = document.getElementById("mobile-logout");
         const mobileForceSyncBtn = document.getElementById("mobile-force-sync");
+        const settingsSessionPanel = document.getElementById("settings-session-panel");
 
         const appContainer = document.getElementById("app-container");
 
@@ -53,6 +54,7 @@ if (isFirebaseConfigured) {
             if (forceSyncBtn) forceSyncBtn.style.display = "flex";
             if (mobileLogoutBtn) mobileLogoutBtn.style.display = "flex";
             if (mobileForceSyncBtn) mobileForceSyncBtn.style.display = "flex";
+            if (settingsSessionPanel) settingsSessionPanel.style.display = "block";
 
             const userRef = db.collection("users").doc(user.uid);
 
@@ -187,6 +189,7 @@ if (isFirebaseConfigured) {
             if (forceSyncBtn) forceSyncBtn.style.display = "none";
             if (mobileLogoutBtn) mobileLogoutBtn.style.display = "none";
             if (mobileForceSyncBtn) mobileForceSyncBtn.style.display = "none";
+            if (settingsSessionPanel) settingsSessionPanel.style.display = "none";
         }
     });
 }
@@ -212,6 +215,12 @@ const MONTHS = [
 
 // ==================== INITIALIZATION ====================
 document.addEventListener("DOMContentLoaded", () => {
+    if (!isFirebaseConfigured) {
+        const overlay = document.getElementById("auth-overlay");
+        const appContainer = document.getElementById("app-container");
+        if (overlay) overlay.style.display = "none";
+        if (appContainer) appContainer.style.display = "";
+    }
     initDefaultState();
     loadStateFromLocalStorage();
     setupEventListeners();
@@ -549,6 +558,7 @@ function updateAppView() {
     renderExpensesView(currentData);
     renderInstallmentsView(currentData);
     renderCreditCardsTable();
+    populateCardDropdown();
     renderSettingsView();
 }
 
@@ -1103,7 +1113,12 @@ function openModal(modalId) {
 }
 
 function closeModal(modalId) {
-    document.querySelectorAll(".modal-overlay").forEach(m => m.classList.remove("active"));
+    if (modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) modal.classList.remove("active");
+    } else {
+        document.querySelectorAll(".modal-overlay").forEach(m => m.classList.remove("active"));
+    }
 }
 
 function togglePvdInputGroup(type) {
@@ -1287,6 +1302,8 @@ window.deleteCreditCard = function (id) {
 function populateCardDropdown(extraValue) {
     const select = document.getElementById("modal-installment-creditor");
     if (!select) return;
+    
+    const selectedVal = extraValue || select.value;
     select.innerHTML = '<option value="" disabled selected>Select Card</option>';
     
     let extraValueMatched = false;
@@ -1296,16 +1313,20 @@ function populateCardDropdown(extraValue) {
         option.value = card.id;
         option.textContent = `${card.name} (${card.bank || 'No Bank'})`;
         select.appendChild(option);
-        if (extraValue && card.id === extraValue) {
+        if (selectedVal && card.id === selectedVal) {
             extraValueMatched = true;
         }
     });
     
-    if (extraValue && !extraValueMatched) {
+    if (selectedVal && !extraValueMatched && selectedVal !== "") {
         const option = document.createElement("option");
-        option.value = extraValue;
-        option.textContent = extraValue;
+        option.value = selectedVal;
+        option.textContent = selectedVal;
         select.appendChild(option);
+    }
+    
+    if (selectedVal) {
+        select.value = selectedVal;
     }
 }
 
@@ -1352,6 +1373,11 @@ function setupEventListeners() {
         mobileLogoutBtn.addEventListener("click", handleLogout);
     }
 
+    const settingsLogoutBtn = document.getElementById("settings-logout");
+    if (settingsLogoutBtn) {
+        settingsLogoutBtn.addEventListener("click", handleLogout);
+    }
+
     function handleLogout(e) {
         e.preventDefault();
         if (confirm("Sign out?")) {
@@ -1379,6 +1405,11 @@ function setupEventListeners() {
 
     if (forceSyncBtn) forceSyncBtn.addEventListener("click", handleForceSync);
     if (mobileForceSyncBtn) mobileForceSyncBtn.addEventListener("click", handleForceSync);
+    
+    const settingsForceSyncBtn = document.getElementById("settings-force-sync");
+    if (settingsForceSyncBtn) {
+        settingsForceSyncBtn.addEventListener("click", handleForceSync);
+    }
 
     // Sidebar Navigation
     document.querySelectorAll(".sidebar-menu .menu-item").forEach(item => {

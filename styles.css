@@ -127,8 +127,9 @@ input, select, textarea, button {
     padding: 2rem 1.5rem 1.5rem;
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 12px;
     border-bottom: 1px solid var(--border-color);
+    margin-bottom: 24px;
 }
 
 .brand-icon {
@@ -1374,7 +1375,7 @@ input:checked + .slider:before {
     }
 
     .sidebar-brand {
-        display: none;
+        display: none !important;
     }
 
     .sidebar-menu {
