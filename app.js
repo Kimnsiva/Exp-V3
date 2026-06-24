@@ -1,4 +1,4 @@
-// app.js - Personal Monthly Expense Tracker Core Logic
+// app.js - KimCash Personal Finance Tracker
 
 // ==================== STATE MANAGEMENT ====================
 let state = {
@@ -18,7 +18,6 @@ let state = {
 };
 
 // ==================== FIREBASE CONFIGURATION ====================
-// TODO: นำ Firebase Config จาก Firebase Console มาวางใน Object นี้
 const firebaseConfig = {
     apiKey: "AIzaSyDstD06DHxVK3JS0dTlz3qxVDgQfjFhaeI",
     authDomain: "kimcash-km.firebaseapp.com",
@@ -28,7 +27,6 @@ const firebaseConfig = {
     appId: "1:405838515046:web:227f6eddecf78d5236d6a7"
 };
 
-// ตรวจสอบว่าได้ตั้งค่า Firebase หรือยัง
 const isFirebaseConfigured = Object.keys(firebaseConfig).length > 0;
 let db = null;
 let auth = null;
@@ -38,55 +36,50 @@ if (isFirebaseConfigured) {
     db = firebase.firestore();
     auth = firebase.auth();
 
-    // Setup Auth State Observer
     auth.onAuthStateChanged((user) => {
         const overlay = document.getElementById("auth-overlay");
         const logoutBtn = document.getElementById("menu-logout");
         if (user) {
-            // Logged in
             if (overlay) overlay.style.display = "none";
             if (logoutBtn) logoutBtn.style.display = "flex";
-            
-            // Sync data from Cloud
+
             db.collection("users").doc(user.uid).get().then(doc => {
                 if (doc.exists) {
                     state = { ...state, ...doc.data() };
-                    localStorage.setItem("fintrack_state", JSON.stringify(state));
+                    localStorage.setItem("kimcash_state", JSON.stringify(state));
                     updateAppView();
                 }
             }).catch(err => console.error("Error loading from Firebase:", err));
-            
-            // Listen for Real-time changes
+
             db.collection("users").doc(user.uid).onSnapshot(doc => {
                 if (doc.exists) {
                     state = { ...state, ...doc.data() };
-                    localStorage.setItem("fintrack_state", JSON.stringify(state));
+                    localStorage.setItem("kimcash_state", JSON.stringify(state));
                     updateAppView();
                 }
             });
         } else {
-            // Not logged in
             if (overlay) overlay.style.display = "flex";
             if (logoutBtn) logoutBtn.style.display = "none";
         }
     });
 }
 
-// Colors for categories (for SVG chart and legends)
+// Colors for categories
 const categoryStyles = {
-    food: { label: "Food & Beverage", color: "#e11d48" }, // rose-600
-    housing: { label: "Housing & Utilities", color: "#d97706" }, // amber-600
-    travel: { label: "Transportation & Gas", color: "#0891b2" }, // cyan-600
-    personal: { label: "Personal & Shopping", color: "#2563eb" }, // blue-600
-    health: { label: "Health & Medical", color: "#65a30d" }, // lime-600
-    entertainment: { label: "Entertainment & Travel", color: "#c026d3" }, // fuchsia-600
-    education: { label: "Education & อัปสกิล", color: "#ea580c" }, // orange-600
-    family: { label: "Family & Care", color: "#7c3aed" }, // violet-600
-    other: { label: "Others", color: "#64748b" }, // slate-500
-    installments: { label: "Credit Card Installments", color: "#0284c7" } // sky-600
+    food: { label: "Food & Beverage", color: "#e11d48" },
+    housing: { label: "Housing & Utilities", color: "#d97706" },
+    travel: { label: "Transportation & Gas", color: "#0891b2" },
+    personal: { label: "Personal & Shopping", color: "#2563eb" },
+    health: { label: "Health & Medical", color: "#65a30d" },
+    entertainment: { label: "Entertainment & Travel", color: "#c026d3" },
+    education: { label: "Education & Upskill", color: "#ea580c" },
+    family: { label: "Family & Care", color: "#7c3aed" },
+    other: { label: "Others", color: "#64748b" },
+    installments: { label: "Installments", color: "#0284c7" }
 };
 
-const THAI_MONTHS = [
+const MONTHS = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
 ];
@@ -101,7 +94,6 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initDefaultState() {
-    // Default selected month to current local month
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -110,9 +102,8 @@ function initDefaultState() {
 
 // ==================== STORAGE OPERATIONS ====================
 function saveStateToLocalStorage() {
-    localStorage.setItem("fintrack_state", JSON.stringify(state));
+    localStorage.setItem("kimcash_state", JSON.stringify(state));
 
-    // หากเชื่อมต่อ Firebase ไว้ ให้บันทึกข้อมูลขึ้น Cloud ด้วย
     if (isFirebaseConfigured && db && auth && auth.currentUser) {
         db.collection("users").doc(auth.currentUser.uid).set(state)
             .catch(err => console.error("Error saving to Firebase:", err));
@@ -120,33 +111,26 @@ function saveStateToLocalStorage() {
 }
 
 function loadStateFromLocalStorage() {
-    // โหลดข้อมูลเก่าจากเครื่องก่อนเพื่อให้แอปพร้อมใช้งานทันที
-    const saved = localStorage.getItem("fintrack_state");
+    const saved = localStorage.getItem("kimcash_state");
     if (saved) {
         try {
             const parsed = JSON.parse(saved);
             state = { ...state, ...parsed };
         } catch (e) {
             console.error("Error parsing saved state:", e);
-            showToast("ไม่สามารถโหลดข้อมูลเดิมได้ ข้อมูลได้รับความเสียหาย", "error");
+            showToast("Failed to load saved data", "error");
         }
     }
-
-    // การซิงค์ข้อมูลจาก Firebase ถูกย้ายไปที่ onAuthStateChanged ด้านบนแล้ว เพื่อให้แสดงผล Login ได้ถูกต้อง
 }
 
 // ==================== FINANCIAL CALCULATION ENGINE ====================
-
-// Helper: Calculate month difference
 function getMonthDiff(startMonthStr, targetMonthStr) {
     const [startY, startM] = startMonthStr.split("-").map(Number);
     const [targetY, targetM] = targetMonthStr.split("-").map(Number);
     return (targetY - startY) * 12 + (targetM - startM);
 }
 
-// Chronological timeline calculation
 function calculateTimeline() {
-    // 1. Gather all months that contain data to find the earliest
     const monthsSet = new Set([state.selectedMonth]);
 
     state.incomes.forEach(item => { if (item.date && item.type === "one-time") monthsSet.add(item.date.slice(0, 7)); });
@@ -154,7 +138,6 @@ function calculateTimeline() {
     state.dcaList.forEach(item => { if (item.date && item.type === "one-time") monthsSet.add(item.date.slice(0, 7)); });
     state.installments.forEach(item => {
         monthsSet.add(item.startMonth);
-        // Add all months in the installment duration
         const [startY, startM] = item.startMonth.split("-").map(Number);
         for (let i = 0; i < item.totalMonths; i++) {
             const m = startM + i;
@@ -166,8 +149,6 @@ function calculateTimeline() {
     });
 
     const uniqueMonths = Array.from(monthsSet).sort();
-
-    // Ensure contiguous list from earliest month up to selected month
     const earliestMonth = uniqueMonths[0];
     const targetMonth = state.selectedMonth;
 
@@ -176,23 +157,18 @@ function calculateTimeline() {
 
     while (current <= targetMonth) {
         contiguousTimeline.push(current);
-        // Advance current by 1 month
         const [y, m] = current.split("-").map(Number);
         const nextM = m + 1;
-        const nextY = y + Math.floor((nextM - 1) / 12);
-        const actualNextM = String(((nextM - 1) % 12) + 1).padStart(2, '0');
         const actualNextY = y + Math.floor((nextM - 1) / 12);
+        const actualNextM = String(((nextM - 1) % 12) + 1).padStart(2, '0');
         current = `${actualNextY}-${actualNextM}`;
     }
 
-    // Results container
     const timelineResults = {};
     let carryOverBalance = 0;
 
-    // Loop chronologically to calculate carry-overs
     contiguousTimeline.forEach(month => {
-        // A. Income calculation
-        let grossIncome = Number(state.baseSalary || 0); // salary is recurring
+        let grossIncome = Number(state.baseSalary || 0);
         let recurringIncome = Number(state.baseSalary || 0);
         let oneTimeIncome = 0;
 
@@ -207,7 +183,6 @@ function calculateTimeline() {
             }
         });
 
-        // B. Welfare Deductions (Only if base salary exists)
         let pvdAmount = 0;
         let ssoAmount = 0;
 
@@ -226,7 +201,6 @@ function calculateTimeline() {
             }
         }
 
-        // C. DCA calculation
         let totalDca = 0;
         const activeDcaList = [];
         state.dcaList.forEach(dca => {
@@ -240,11 +214,9 @@ function calculateTimeline() {
             }
         });
 
-        // Net Disposable Income (income after savings/pvd/sso)
         const totalDeductions = pvdAmount + ssoAmount + totalDca;
         const disposableIncome = grossIncome - totalDeductions;
 
-        // D. Expenses & Installments calculation
         let generalExpenses = 0;
         let recurringExpense = 0;
         let oneTimeExpense = 0;
@@ -263,7 +235,6 @@ function calculateTimeline() {
             }
         });
 
-        // Credit Card Installments
         let installmentExpenses = 0;
         const activeInstallmentsList = [];
 
@@ -281,8 +252,6 @@ function calculateTimeline() {
         });
 
         const totalExpenses = generalExpenses + installmentExpenses;
-
-        // E. Net Balance and next month Carry-over
         const inputCarry = state.carryOverEnabled ? carryOverBalance : 0;
         const netBalance = (disposableIncome + inputCarry) - totalExpenses;
 
@@ -306,7 +275,6 @@ function calculateTimeline() {
             netBalance
         };
 
-        // Carry forward to next month
         carryOverBalance = netBalance;
     });
 
@@ -318,22 +286,11 @@ function updateAppView() {
     const results = calculateTimeline();
     const currentData = results[state.selectedMonth] || {
         month: state.selectedMonth,
-        carryOver: 0,
-        grossIncome: 0,
-        recurringIncome: 0,
-        oneTimeIncome: 0,
-        pvd: 0,
-        sso: 0,
-        totalDca: 0,
-        activeDcaList: [],
-        totalDeductions: 0,
-        disposableIncome: 0,
-        generalExpenses: 0,
-        installmentExpenses: 0,
-        totalExpenses: 0,
-        activeExpensesList: [],
-        activeInstallmentsList: [],
-        netBalance: 0
+        carryOver: 0, grossIncome: 0, recurringIncome: 0, oneTimeIncome: 0,
+        pvd: 0, sso: 0, totalDca: 0, activeDcaList: [],
+        totalDeductions: 0, disposableIncome: 0, generalExpenses: 0,
+        installmentExpenses: 0, totalExpenses: 0, activeExpensesList: [],
+        activeInstallmentsList: [], netBalance: 0
     };
 
     updateMonthHeader();
@@ -346,126 +303,115 @@ function updateAppView() {
     renderSettingsView();
 }
 
-// Update Month Selector Display
 function updateMonthHeader() {
     const [year, month] = state.selectedMonth.split("-").map(Number);
-    const thaiMonth = THAI_MONTHS[month - 1];
-    const buddhistYear = year + 543;
-    document.getElementById("selected-month-year").textContent = `${thaiMonth} ${buddhistYear}`;
+    document.getElementById("selected-month-year").textContent = `${MONTHS[month - 1]} ${year}`;
 }
 
-// Render the 5 Core Cards on Dashboard
 function renderSummaryCards(data) {
-    // 1. Carry-over
+    // Carry-over
     const carryValEl = document.getElementById("card-carry-value");
     const carryStatEl = document.getElementById("card-carry-status");
     carryValEl.textContent = formatCurrency(data.carryOver);
     if (data.carryOver > 0) {
         carryValEl.className = "card-value text-income";
-        carryStatEl.textContent = "มีเงินออมสะสมยกมาหนุน";
+        carryStatEl.textContent = "Surplus carried forward";
     } else if (data.carryOver < 0) {
         carryValEl.className = "card-value text-danger";
-        carryStatEl.textContent = "มียอดค้างชำระหักลบข้ามเดือน";
+        carryStatEl.textContent = "Deficit carried forward";
     } else {
         carryValEl.className = "card-value";
         carryStatEl.textContent = "No carry-over balance";
     }
 
-    // 2. Gross Income
+    // Gross Income
     document.getElementById("card-income-value").textContent = formatCurrency(data.grossIncome);
     document.getElementById("card-income-recurring-ratio").textContent =
-        `เงินเดือนRecurring: ${formatCurrency(state.baseSalary)} | Others: ${formatCurrency(data.oneTimeIncome)}`;
+        `Recurring: ${formatCurrency(state.baseSalary)} | Other: ${formatCurrency(data.oneTimeIncome)}`;
 
-    // 3. Deductions & DCA
+    // Deductions
     document.getElementById("card-savings-value").textContent = formatCurrency(data.totalDeductions);
-    document.getElementById("card-take-home-value").textContent = `เงินเหลือหลังออม: ${formatCurrency(data.disposableIncome)}`;
+    document.getElementById("card-take-home-value").textContent = `After savings: ${formatCurrency(data.disposableIncome)}`;
 
-    // 4. Expenses & Installments
+    // Expenses
     document.getElementById("card-expense-value").textContent = formatCurrency(data.totalExpenses);
     document.getElementById("card-installment-ratio").textContent =
-        `จ่ายสด: ${formatCurrency(data.generalExpenses)} | ผ่อนบัตร: ${formatCurrency(data.installmentExpenses)}`;
+        `General: ${formatCurrency(data.generalExpenses)} | Installments: ${formatCurrency(data.installmentExpenses)}`;
 
-    // 5. Net Balance
+    // Net Balance
     const netValEl = document.getElementById("card-net-value");
     const netCardEl = netValEl.closest(".card-net");
     netValEl.textContent = formatCurrency(data.netBalance);
     if (data.netBalance >= 0) {
         netCardEl.className = "card glass-card card-net net-positive";
-        document.getElementById("card-net-status").textContent = "สุขภาพการเงินปกติ ยอดจะยกไปเพิ่มเดือนหน้า";
+        document.getElementById("card-net-status").textContent = "Carries over to next month";
     } else {
         netCardEl.className = "card glass-card card-net net-negative";
-        document.getElementById("card-net-status").textContent = "งบติดลบ! ยอดติดลบจะยกไปหักเดือนหน้า";
+        document.getElementById("card-net-status").textContent = "Deficit carries to next month";
     }
 }
 
-// Render Dashboard Charts & Tables
 function renderDashboardDetails(data) {
-    // A. Budget Progress Bars
-    // Savings Rate (Total Deductions / Gross Income)
+    // Savings Rate
     const savingsRate = data.grossIncome > 0 ? (data.totalDeductions / data.grossIncome) * 100 : 0;
     document.getElementById("metric-savings-rate-val").textContent = `${savingsRate.toFixed(1)}%`;
     document.getElementById("metric-savings-rate-bar").style.width = `${Math.min(savingsRate, 100)}%`;
 
-    // Expense Ratio (Total Expenses / Disposable Income)
+    // Expense Ratio
     const expenseRatio = data.disposableIncome > 0 ? (data.totalExpenses / data.disposableIncome) * 100 : 0;
     document.getElementById("metric-expense-ratio-val").textContent = `${expenseRatio.toFixed(1)}%`;
     document.getElementById("metric-expense-ratio-bar").style.width = `${Math.min(expenseRatio, 100)}%`;
 
-    // Set color indicators based on ratio levels
     const expenseRatioBar = document.getElementById("metric-expense-ratio-bar");
     if (expenseRatio > 90) {
         expenseRatioBar.style.background = "var(--color-expense)";
     } else if (expenseRatio > 70) {
         expenseRatioBar.style.background = "var(--color-warning)";
     } else {
-        expenseRatioBar.style.background = "linear-gradient(90deg, var(--color-credit) 0%, var(--color-expense) 100%)";
+        expenseRatioBar.style.background = "var(--color-expense)";
     }
 
-    // B. SVG Donut Chart for Expense Breakdown
     renderDonutChart(data);
 
-    // C. Dashboard Quick Summary Tables
-    // Incomes
+    // Quick Lists
     const incList = document.getElementById("quick-income-list");
     incList.innerHTML = "";
     if (state.baseSalary > 0) {
-        incList.appendChild(createQuickLi("เงินเดือนRecurring", "รายได้หลัก", state.baseSalary, "text-income"));
+        incList.appendChild(createQuickLi("Base Salary", "Recurring", state.baseSalary, "text-income"));
     }
     const currentMonthIncomes = state.incomes.filter(i => i.type === "recurring" || i.date.slice(0, 7) === state.selectedMonth);
     currentMonthIncomes.forEach(inc => {
-        incList.appendChild(createQuickLi(inc.title, inc.type === "recurring" ? "รายได้Recurring" : "รับOne-time", inc.amount, "text-income"));
+        incList.appendChild(createQuickLi(inc.title, inc.type === "recurring" ? "Recurring" : "One-time", inc.amount, "text-income"));
     });
     if (incList.children.length === 0) {
         incList.innerHTML = `<li class="empty-item">No income data</li>`;
     }
 
-    // Savings & DCA
     const savList = document.getElementById("quick-savings-list");
     savList.innerHTML = "";
     if (data.pvd > 0) {
-        savList.appendChild(createQuickLi("กองทุนสำรองเลี้ยงชีพ (PVD)", "หักสวัสดิการ", data.pvd, "text-savings"));
+        savList.appendChild(createQuickLi("Provident Fund (PVD)", "Welfare", data.pvd, "text-savings"));
     }
     if (data.sso > 0) {
-        savList.appendChild(createQuickLi("ประกันสังคม (SSO)", "หักสวัสดิการ", data.sso, "text-savings"));
+        savList.appendChild(createQuickLi("Social Security (SSO)", "Welfare", data.sso, "text-savings"));
     }
     data.activeDcaList.forEach(dca => {
-        savList.appendChild(createQuickLi(dca.title, `${categoryStyles[dca.category]?.label || 'การลงทุน'} (DCA)`, dca.computedAmount, "text-savings"));
+        savList.appendChild(createQuickLi(dca.title, `${categoryStyles[dca.category]?.label || 'Investment'} (DCA)`, dca.computedAmount, "text-savings"));
     });
     if (savList.children.length === 0) {
         savList.innerHTML = `<li class="empty-item">No savings deductions</li>`;
     }
 
-    // Expenses & Installments
     const expList = document.getElementById("quick-expense-list");
     expList.innerHTML = "";
     data.activeExpensesList.forEach(exp => {
         expList.appendChild(createQuickLi(exp.title, `${categoryStyles[exp.category]?.label || 'Others'}`, exp.computedAmount, "text-danger"));
     });
     data.activeInstallmentsList.forEach(inst => {
-        expList.appendChild(createQuickLi(inst.title, `ผ่อนInstallment ${inst.currentInstallmentIndex}/${inst.totalMonths}`, inst.computedAmount, "text-danger"));
+        expList.appendChild(createQuickLi(inst.title, `Installment ${inst.currentInstallmentIndex}/${inst.totalMonths}`, inst.computedAmount, "text-danger"));
     });
     if (expList.children.length === 0) {
-        expList.innerHTML = `<li class="empty-item">ไม่มีข้อมูลExpenses</li>`;
+        expList.innerHTML = `<li class="empty-item">No expense data</li>`;
     }
 }
 
@@ -481,7 +427,6 @@ function createQuickLi(name, typeText, val, textClass) {
     return li;
 }
 
-// Donut Chart Drawing Logic (Native SVG)
 function renderDonutChart(data) {
     const segmentsContainer = document.getElementById("donut-segments");
     const legendContainer = document.getElementById("chart-legend-container");
@@ -489,7 +434,6 @@ function renderDonutChart(data) {
     segmentsContainer.innerHTML = "";
     legendContainer.innerHTML = "";
 
-    // 1. Group expenses by category
     const catAmounts = {};
     let total = 0;
 
@@ -512,7 +456,6 @@ function renderDonutChart(data) {
         return;
     }
 
-    // 2. Compute percentages and sort descending
     const items = Object.keys(catAmounts).map(catKey => {
         const amt = catAmounts[catKey];
         return {
@@ -523,14 +466,12 @@ function renderDonutChart(data) {
         };
     }).sort((a, b) => b.amount - a.amount);
 
-    // 3. Draw SVG segments
     const radius = 70;
-    const circumference = 2 * Math.PI * radius; // 439.82
+    const circumference = 2 * Math.PI * radius;
     let accumulatedPercent = 0;
 
     items.forEach(item => {
         const dashArrayVal = (item.percentage / 100) * circumference;
-        const dashOffsetVal = circumference - dashArrayVal + (accumulatedPercent / 100) * circumference;
 
         const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
         circle.setAttribute("cx", "100");
@@ -544,7 +485,6 @@ function renderDonutChart(data) {
 
         accumulatedPercent += item.percentage;
 
-        // Render Legend Item
         const legendDiv = document.createElement("div");
         legendDiv.className = "legend-item";
         legendDiv.innerHTML = `
@@ -558,27 +498,25 @@ function renderDonutChart(data) {
     });
 }
 
-// ==================== VIEW 2: INCOMES VIEW ====================
+// ==================== VIEW 2: INCOMES ====================
 function renderIncomeView(data) {
     document.getElementById("input-base-salary").value = state.baseSalary || "";
 
     const tbody = document.getElementById("income-table-body");
     tbody.innerHTML = "";
 
-    // Show Base Salary as a static row in Incomes list if it's set
     if (state.baseSalary > 0) {
         const row = document.createElement("tr");
         row.innerHTML = `
-            <td><strong>เงินเดือนRecurring (Base Salary)</strong></td>
-            <td><span class="badge badge-recurring">Recurringทุกเดือน</span></td>
-            <td>-</td>
+            <td><strong>Base Salary</strong></td>
+            <td><span class="badge badge-recurring">Recurring</span></td>
+            <td>—</td>
             <td class="text-right td-amount text-income">฿${state.baseSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-            <td class="text-center"><span class="text-muted" style="font-size: 0.8rem;">แก้ไขที่ฟอร์มด้านบน</span></td>
+            <td class="text-center"><span class="text-muted" style="font-size: 0.7rem;">Edit above</span></td>
         `;
         tbody.appendChild(row);
     }
 
-    // Filter incomes active in current month
     const activeIncomes = state.incomes.filter(inc => {
         return inc.type === "recurring" || inc.date.slice(0, 7) === state.selectedMonth;
     });
@@ -586,21 +524,21 @@ function renderIncomeView(data) {
     activeIncomes.forEach(inc => {
         const row = document.createElement("tr");
         const badgeClass = inc.type === "recurring" ? "badge-recurring" : "badge-one-time";
-        const badgeLabel = inc.type === "recurring" ? "Recurringทุกเดือน" : "This Month Only";
+        const badgeLabel = inc.type === "recurring" ? "Recurring" : "One-time";
 
         row.innerHTML = `
             <td>${escapeHTML(inc.title)}</td>
             <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
-            <td>${inc.type === "one-time" ? formatDateThai(inc.date) : "-"}</td>
+            <td>${inc.type === "one-time" ? formatDate(inc.date) : "—"}</td>
             <td class="text-right td-amount text-income">฿${Number(inc.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td class="text-center">
-                <button class="btn-action-icon btn-edit" onclick="openEditIncome('${inc.id}')" title="แก้ไข">
+                <button class="btn-action-icon btn-edit" onclick="openEditIncome('${inc.id}')" title="Edit">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                         <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                     </svg>
                 </button>
-                <button class="btn-action-icon btn-delete" onclick="deleteIncome('${inc.id}')" title="ลบ">
+                <button class="btn-action-icon btn-delete" onclick="deleteIncome('${inc.id}')" title="Delete">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="3 6 5 6 21 6"/>
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -612,16 +550,14 @@ function renderIncomeView(data) {
     });
 
     if (tbody.children.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center no-data">No income dataเพิ่มเติมในเดือนนี้</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center no-data">No additional income this month</td></tr>`;
     }
 }
 
-// ==================== VIEW 3: DEDUCTIONS & DCA VIEW ====================
+// ==================== VIEW 3: DEDUCTIONS & DCA ====================
 function renderDeductionsView(data) {
-    // 1. Setup welfares config fields
     const w = state.welfareSettings;
 
-    // Provident Fund PVD
     document.getElementById("pvd-type-percent").checked = w.pvdType === "percent";
     document.getElementById("pvd-type-fixed").checked = w.pvdType === "fixed";
     document.getElementById("pvd-percent-input").value = w.pvdValue && w.pvdType === "percent" ? w.pvdValue : 3;
@@ -629,66 +565,61 @@ function renderDeductionsView(data) {
 
     togglePvdInputGroup(w.pvdType);
 
-    // Social Security SSO
     document.getElementById("sso-type-auto").checked = w.ssoType === "auto";
     document.getElementById("sso-type-fixed").checked = w.ssoType === "fixed";
     document.getElementById("sso-fixed-input").value = w.ssoValue;
 
     toggleSsoInputGroup(w.ssoType);
 
-    // 2. Render Deductions + DCA Table
     const tbody = document.getElementById("dca-table-body");
     tbody.innerHTML = "";
 
-    // PVD Row
     if (data.pvd > 0) {
         const row = document.createElement("tr");
         row.innerHTML = `
             <td><strong>Provident Fund (PVD)</strong></td>
-            <td><span class="badge badge-savings">สวัสดิการพนักงาน</span></td>
-            <td><span class="badge badge-recurring">Recurringทุกเดือน</span></td>
-            <td>-</td>
+            <td><span class="badge badge-savings">Welfare</span></td>
+            <td><span class="badge badge-recurring">Recurring</span></td>
+            <td>—</td>
             <td class="text-right td-amount text-savings">฿${data.pvd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-            <td class="text-center"><span class="text-muted" style="font-size: 0.8rem;">แก้ไขสวัสดิการด้านบน</span></td>
+            <td class="text-center"><span class="text-muted" style="font-size: 0.7rem;">Edit above</span></td>
         `;
         tbody.appendChild(row);
     }
 
-    // SSO Row
     if (data.sso > 0) {
         const row = document.createElement("tr");
         row.innerHTML = `
             <td><strong>Social Security (SSO)</strong></td>
-            <td><span class="badge badge-savings">สวัสดิการพนักงาน</span></td>
-            <td><span class="badge badge-recurring">Recurringทุกเดือน</span></td>
-            <td>-</td>
+            <td><span class="badge badge-savings">Welfare</span></td>
+            <td><span class="badge badge-recurring">Recurring</span></td>
+            <td>—</td>
             <td class="text-right td-amount text-savings">฿${data.sso.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-            <td class="text-center"><span class="text-muted" style="font-size: 0.8rem;">แก้ไขสวัสดิการด้านบน</span></td>
+            <td class="text-center"><span class="text-muted" style="font-size: 0.7rem;">Edit above</span></td>
         `;
         tbody.appendChild(row);
     }
 
-    // DCA Items
     data.activeDcaList.forEach(dca => {
         const row = document.createElement("tr");
         const badgeClass = dca.type === "recurring" ? "badge-recurring" : "badge-one-time";
-        const badgeLabel = dca.type === "recurring" ? "Recurringทุกเดือน" : "This Month Only";
-        const assetLabel = categoryStyles[dca.category]?.label || "เงินลงทุน";
+        const badgeLabel = dca.type === "recurring" ? "Recurring" : "One-time";
+        const assetLabel = categoryStyles[dca.category]?.label || "Investment";
 
         row.innerHTML = `
             <td>${escapeHTML(dca.title)}</td>
-            <td><span class="badge badge-savings" style="background-color: rgba(139, 92, 246, 0.15)">${assetLabel}</span></td>
+            <td><span class="badge badge-savings" style="background-color: rgba(139, 92, 246, 0.1)">${assetLabel}</span></td>
             <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
-            <td>${dca.type === "one-time" ? formatDateThai(dca.date) : "-"}</td>
+            <td>${dca.type === "one-time" ? formatDate(dca.date) : "—"}</td>
             <td class="text-right td-amount text-savings">฿${Number(dca.computedAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td class="text-center">
-                <button class="btn-action-icon btn-edit" onclick="openEditDca('${dca.id}')" title="แก้ไข">
+                <button class="btn-action-icon btn-edit" onclick="openEditDca('${dca.id}')" title="Edit">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                         <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                     </svg>
                 </button>
-                <button class="btn-action-icon btn-delete" onclick="deleteDca('${dca.id}')" title="ลบ">
+                <button class="btn-action-icon btn-delete" onclick="deleteDca('${dca.id}')" title="Delete">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="3 6 5 6 21 6"/>
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -700,16 +631,15 @@ function renderDeductionsView(data) {
     });
 
     if (tbody.children.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center no-data">ไม่มีข้อมูลการสะสม/ DCA ในเดือนนี้</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center no-data">No savings or DCA this month</td></tr>`;
     }
 }
 
-// ==================== VIEW 4: GENERAL EXPENSES VIEW ====================
+// ==================== VIEW 4: GENERAL EXPENSES ====================
 function renderExpensesView(data) {
     const tbody = document.getElementById("expense-table-body");
     tbody.innerHTML = "";
 
-    // 1. Credit Card Installments (Render as static list rows)
     data.activeInstallmentsList.forEach(inst => {
         const row = document.createElement("tr");
         const assetLabel = categoryStyles[inst.category]?.label || "Others";
@@ -717,25 +647,24 @@ function renderExpensesView(data) {
             <td><strong>[Installment] ${escapeHTML(inst.title)}</strong></td>
             <td><span class="badge badge-recurring">Installment ${inst.currentInstallmentIndex}/${inst.totalMonths}</span></td>
             <td><span class="badge badge-credit">${assetLabel}</span></td>
-            <td>-</td>
+            <td>—</td>
             <td class="text-right td-amount text-danger">฿${Number(inst.computedAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-            <td class="text-center"><span class="text-muted" style="font-size: 0.8rem;">Actions in Installments Menu</span></td>
+            <td class="text-center"><span class="text-muted" style="font-size: 0.7rem;">Manage in Installments</span></td>
         `;
         tbody.appendChild(row);
     });
 
-    // 2. General Expense Items
     data.activeExpensesList.forEach(exp => {
         const row = document.createElement("tr");
         const badgeClass = exp.type === "recurring" ? "badge-recurring" : "badge-one-time";
-        const badgeLabel = exp.type === "recurring" ? "Recurring Monthly" : "This Month Only";
+        const badgeLabel = exp.type === "recurring" ? "Recurring" : "One-time";
         const catLabel = categoryStyles[exp.category]?.label || "Others";
 
         row.innerHTML = `
             <td>${escapeHTML(exp.title)}</td>
             <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
             <td><span class="badge badge-expense">${catLabel}</span></td>
-            <td>${exp.type === "one-time" ? formatDateThai(exp.date) : "-"}</td>
+            <td>${exp.type === "one-time" ? formatDate(exp.date) : "—"}</td>
             <td class="text-right td-amount text-danger">฿${Number(exp.computedAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td class="text-center">
                 <button class="btn-action-icon btn-edit" onclick="openEditExpense('${exp.id}')" title="Edit">
@@ -756,28 +685,26 @@ function renderExpensesView(data) {
     });
 
     if (tbody.children.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center no-data">No general expenses this month</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center no-data">No expenses this month</td></tr>`;
     }
 }
 
-// ==================== VIEW 5: INSTALLMENTS VIEW ====================
+// ==================== VIEW 5: INSTALLMENTS ====================
 function renderInstallmentsView(data) {
     const tbody = document.getElementById("installment-table-body");
     tbody.innerHTML = "";
 
     state.installments.forEach(inst => {
         const row = document.createElement("tr");
-
-        // Check current state for this installment in the selected month
         const diff = getMonthDiff(inst.startMonth, state.selectedMonth);
         let statusBadge = "";
 
         if (diff < 0) {
-            statusBadge = `<span class="badge" style="background-color: rgba(245, 158, 11, 0.1); color: var(--color-warning);">Not started (First installment ${formatMonthYearThai(inst.startMonth)})</span>`;
+            statusBadge = `<span class="badge" style="background-color: rgba(234, 179, 8, 0.08); color: var(--color-warning);">Not started (${formatMonthYear(inst.startMonth)})</span>`;
         } else if (diff >= inst.totalMonths) {
-            statusBadge = `<span class="badge" style="background-color: rgba(16, 185, 129, 0.1); color: var(--color-income);">Fully paid (Completed)</span>`;
+            statusBadge = `<span class="badge" style="background-color: rgba(5, 150, 105, 0.08); color: var(--color-income);">Fully paid</span>`;
         } else {
-            statusBadge = `<span class="badge badge-credit">Paying (Installment ${diff + 1}/${inst.totalMonths})</span>`;
+            statusBadge = `<span class="badge badge-credit">Paying ${diff + 1}/${inst.totalMonths}</span>`;
         }
 
         const catLabel = categoryStyles[inst.category]?.label || "Others";
@@ -790,8 +717,8 @@ function renderInstallmentsView(data) {
             <td><span class="badge badge-credit">${catLabel}</span></td>
             <td class="td-amount">฿${Number(inst.totalAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td class="td-amount text-danger">฿${Number(inst.monthlyAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-            <td>${inst.totalMonths} Months</td>
-            <td>${formatMonthYearThai(inst.startMonth)}</td>
+            <td>${inst.totalMonths} mo</td>
+            <td>${formatMonthYear(inst.startMonth)}</td>
             <td>${statusBadge}</td>
             <td class="text-center">
                 <button class="btn-action-icon btn-edit" onclick="openEditInstallment('${inst.id}')" title="Edit">
@@ -812,33 +739,29 @@ function renderInstallmentsView(data) {
     });
 
     if (tbody.children.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center no-data">No installment plans in the system</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center no-data">No installment plans</td></tr>`;
     }
 }
 
-// ==================== VIEW 6: SETTINGS VIEW ====================
+// ==================== VIEW 6: SETTINGS ====================
 function renderSettingsView() {
     document.getElementById("setting-carry-over-toggle").checked = state.carryOverEnabled;
 }
 
 // ==================== INTERACTION LOGIC & MODALS ====================
-
 function switchView(viewId) {
-    // 1. Toggle Menu Items Active classes
     document.querySelectorAll(".sidebar-menu .menu-item").forEach(item => {
         item.classList.remove("active");
     });
     const activeMenu = document.getElementById(`menu-${viewId}`);
     if (activeMenu) activeMenu.classList.add("active");
 
-    // 2. Show Active View
     document.querySelectorAll(".content-view").forEach(view => {
         view.classList.remove("active-view");
     });
     const activeView = document.getElementById(`view-${viewId}`);
     if (activeView) activeView.classList.add("active-view");
 
-    // 3. Update Titles & Subtitles
     const titleEl = document.getElementById("current-view-title");
     const subEl = document.getElementById("current-view-subtitle");
 
@@ -849,28 +772,27 @@ function switchView(viewId) {
             break;
         case "incomes":
             titleEl.textContent = "Incomes";
-            subEl.textContent = "Recurring Salary and Additional Incomes";
+            subEl.textContent = "Salary and Additional Incomes";
             break;
         case "deductions":
             titleEl.textContent = "Savings & DCA";
-            subEl.textContent = "Welfare Funds, Provident Fund, Social Security, and DCA";
+            subEl.textContent = "Welfare Funds, PVD, SSO, and DCA";
             break;
         case "expenses":
-            titleEl.textContent = "General Expenses";
-            subEl.textContent = "Store General Expenses History";
+            titleEl.textContent = "Expenses";
+            subEl.textContent = "General Expense History";
             break;
         case "installments":
-            titleEl.textContent = "ItemCredit Card Installments";
-            subEl.textContent = "Manage Installment Table and Monthly Balances";
+            titleEl.textContent = "Installments";
+            subEl.textContent = "Credit Card Installment Plans";
             break;
         case "settings":
-            titleEl.textContent = "Settings & Backup";
-            subEl.textContent = "App Calculations and Database Actions";
+            titleEl.textContent = "Settings";
+            subEl.textContent = "App Settings and Data Management";
             break;
     }
 }
 
-// Toast System
 function showToast(message, type = "success") {
     const container = document.getElementById("toast-container");
     const toast = document.createElement("div");
@@ -879,27 +801,21 @@ function showToast(message, type = "success") {
 
     container.appendChild(toast);
 
-    // Auto remove after 3s
     setTimeout(() => {
         toast.style.animation = "slideInRight var(--transition-fast) reverse";
         setTimeout(() => toast.remove(), 200);
     }, 3000);
 }
 
-// Modal opening / closing helpers
 function openModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) modal.classList.add("active");
 }
 
 function closeModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) modal.classList.add("active");
-    // Clear validation/inputs and active class
     document.querySelectorAll(".modal-overlay").forEach(m => m.classList.remove("active"));
 }
 
-// Dynamic display of input groups in welfares
 function togglePvdInputGroup(type) {
     if (type === "percent") {
         document.getElementById("pvd-val-percent-group").classList.remove("hidden");
@@ -920,7 +836,7 @@ function toggleSsoInputGroup(type) {
     }
 }
 
-// Form Handlers & Modal Editing
+// Edit/Delete functions
 window.openEditIncome = function (id) {
     const inc = state.incomes.find(i => i.id === id);
     if (!inc) return;
@@ -945,11 +861,11 @@ window.openEditIncome = function (id) {
 };
 
 window.deleteIncome = function (id) {
-    if (confirm("Are you sure you want to delete this income item?")) {
+    if (confirm("Delete this income item?")) {
         state.incomes = state.incomes.filter(i => i.id !== id);
         saveStateToLocalStorage();
         updateAppView();
-        showToast("Income deleted successfully", "success");
+        showToast("Income deleted", "success");
     }
 };
 
@@ -978,11 +894,11 @@ window.openEditDca = function (id) {
 };
 
 window.deleteDca = function (id) {
-    if (confirm("Are you sure you want to delete this DCA item?")) {
+    if (confirm("Delete this DCA item?")) {
         state.dcaList = state.dcaList.filter(d => d.id !== id);
         saveStateToLocalStorage();
         updateAppView();
-        showToast("DCA item deleted successfully", "success");
+        showToast("DCA item deleted", "success");
     }
 };
 
@@ -1011,11 +927,11 @@ window.openEditExpense = function (id) {
 };
 
 window.deleteExpense = function (id) {
-    if (confirm("Are you sure you want to delete this expense?")) {
+    if (confirm("Delete this expense?")) {
         state.expenses = state.expenses.filter(e => e.id !== id);
         saveStateToLocalStorage();
         updateAppView();
-        showToast("Expense deleted successfully", "success");
+        showToast("Expense deleted", "success");
     }
 };
 
@@ -1043,124 +959,26 @@ window.openEditInstallment = function (id) {
     document.getElementById("modal-installment-start").value = inst.startMonth;
     document.getElementById("modal-installment-category").value = inst.category;
 
-    document.getElementById("installment-modal-title").textContent = "Edit Installment Item";
+    document.getElementById("installment-modal-title").textContent = "Edit Installment";
     openModal("modal-installment");
 };
 
 window.deleteInstallment = function (id) {
-    if (confirm("Are you sure you want to delete this installment plan? (Related monthly deductions will also be removed)")) {
+    if (confirm("Delete this installment plan?")) {
         state.installments = state.installments.filter(i => i.id !== id);
         saveStateToLocalStorage();
         updateAppView();
-        showToast("Installment plan deleted successfully", "success");
+        showToast("Installment deleted", "success");
     }
 };
 
-// ==================== EVENT LISTENERS SETUP ====================
+// ==================== EVENT LISTENERS ====================
 function setupEventListeners() {
-    // 0. Auth Listeners
-    let isRegisterMode = false;
-    const authForm = document.getElementById("auth-form");
+    // Phone Auth Logic (Phone Only)
     const phoneAuthForm = document.getElementById("phone-auth-form");
-    const toggleRegisterBtn = document.getElementById("btn-toggle-register");
-    const authSubmitBtn = document.getElementById("btn-login-submit");
     const authErrorMsg = document.getElementById("auth-error-msg");
     const logoutBtn = document.getElementById("menu-logout");
 
-    // Tab Toggling
-    const tabEmail = document.getElementById("tab-email");
-    const tabPhone = document.getElementById("tab-phone");
-
-    if (tabEmail && tabPhone) {
-        tabEmail.addEventListener("click", (e) => {
-            e.preventDefault();
-            authForm.style.display = "block";
-            phoneAuthForm.style.display = "none";
-            tabEmail.style.color = "var(--color-primary)";
-            tabEmail.style.borderBottom = "2px solid var(--color-primary)";
-            tabPhone.style.color = "var(--text-muted)";
-            tabPhone.style.borderBottom = "none";
-            authErrorMsg.style.display = "none";
-        });
-
-        tabPhone.addEventListener("click", (e) => {
-            e.preventDefault();
-            authForm.style.display = "none";
-            phoneAuthForm.style.display = "block";
-            tabPhone.style.color = "var(--color-primary)";
-            tabPhone.style.borderBottom = "2px solid var(--color-primary)";
-            tabEmail.style.color = "var(--text-muted)";
-            tabEmail.style.borderBottom = "none";
-            authErrorMsg.style.display = "none";
-            
-            // Initialize Recaptcha if not already done
-            if (!window.recaptchaVerifier && isFirebaseConfigured) {
-                window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
-                    'size': 'normal',
-                    'callback': (response) => {
-                        // reCAPTCHA solved, allow signInWithPhoneNumber.
-                    }
-                });
-                window.recaptchaVerifier.render();
-            }
-        });
-    }
-
-    if (toggleRegisterBtn) {
-        toggleRegisterBtn.addEventListener("click", (e) => {
-            e.preventDefault();
-            isRegisterMode = !isRegisterMode;
-            if (isRegisterMode) {
-                authSubmitBtn.textContent = "สมัครสมาชิก";
-                toggleRegisterBtn.textContent = "เข้าสู่ระบบ";
-                toggleRegisterBtn.previousElementSibling.textContent = "มีบัญชีอยู่แล้ว? ";
-            } else {
-                authSubmitBtn.textContent = "เข้าสู่ระบบ";
-                toggleRegisterBtn.textContent = "สมัครสมาชิก";
-                toggleRegisterBtn.previousElementSibling.textContent = "ยังไม่มีบัญชีใช่ไหม? ";
-            }
-            authErrorMsg.style.display = "none";
-        });
-    }
-
-    // Email/Password Form
-    if (authForm) {
-        authForm.addEventListener("submit", (e) => {
-            e.preventDefault();
-            const email = document.getElementById("auth-email").value;
-            const password = document.getElementById("auth-password").value;
-            
-            authSubmitBtn.disabled = true;
-            authSubmitBtn.textContent = "กำลังดำเนินการ...";
-            authErrorMsg.style.display = "none";
-
-            if (isRegisterMode) {
-                auth.createUserWithEmailAndPassword(email, password)
-                    .then(() => {
-                        showToast("สมัครสมาชิกสำเร็จ", "success");
-                    })
-                    .catch((error) => {
-                        authErrorMsg.textContent = error.message;
-                        authErrorMsg.style.display = "block";
-                        authSubmitBtn.disabled = false;
-                        authSubmitBtn.textContent = "สมัครสมาชิก";
-                    });
-            } else {
-                auth.signInWithEmailAndPassword(email, password)
-                    .then(() => {
-                        showToast("เข้าสู่ระบบสำเร็จ", "success");
-                    })
-                    .catch((error) => {
-                        authErrorMsg.textContent = error.message;
-                        authErrorMsg.style.display = "block";
-                        authSubmitBtn.disabled = false;
-                        authSubmitBtn.textContent = "เข้าสู่ระบบ";
-                    });
-            }
-        });
-    }
-
-    // Phone Auth Logic
     if (phoneAuthForm) {
         const phoneInputSection = document.getElementById("phone-input-section");
         const otpInputSection = document.getElementById("otp-input-section");
@@ -1168,19 +986,27 @@ function setupEventListeners() {
         const btnVerifyOtp = document.getElementById("btn-verify-otp");
         const btnCancelPhone = document.getElementById("btn-cancel-phone");
 
-        // Send OTP
+        // Initialize Recaptcha
+        if (isFirebaseConfigured && !window.recaptchaVerifier) {
+            window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+                'size': 'normal',
+                'callback': (response) => { }
+            });
+            window.recaptchaVerifier.render();
+        }
+
         phoneAuthForm.addEventListener("submit", (e) => {
             e.preventDefault();
-            const phoneVal = document.getElementById("auth-phone").value.replace(/^0+/, ''); // Remove leading zeros
+            const phoneVal = document.getElementById("auth-phone").value.replace(/^0+/, '');
             if (phoneVal.length < 8) {
-                authErrorMsg.textContent = "เบอร์โทรศัพท์ไม่ถูกต้อง";
+                authErrorMsg.textContent = "Invalid phone number";
                 authErrorMsg.style.display = "block";
                 return;
             }
             const phoneNumber = "+66" + phoneVal;
-            
+
             btnSendOtp.disabled = true;
-            btnSendOtp.textContent = "กำลังส่ง SMS...";
+            btnSendOtp.textContent = "Sending...";
             authErrorMsg.style.display = "none";
 
             auth.signInWithPhoneNumber(phoneNumber, window.recaptchaVerifier)
@@ -1188,41 +1014,37 @@ function setupEventListeners() {
                     window.confirmationResult = confirmationResult;
                     phoneInputSection.style.display = "none";
                     otpInputSection.style.display = "block";
-                    showToast("ส่งรหัส OTP เรียบร้อยแล้ว", "success");
+                    showToast("OTP sent successfully", "success");
                     btnSendOtp.disabled = false;
-                    btnSendOtp.textContent = "ขอรหัส OTP";
+                    btnSendOtp.textContent = "Send OTP";
                 }).catch((error) => {
                     authErrorMsg.textContent = error.message;
                     authErrorMsg.style.display = "block";
                     btnSendOtp.disabled = false;
-                    btnSendOtp.textContent = "ขอรหัส OTP";
-                    // Reset recaptcha
+                    btnSendOtp.textContent = "Send OTP";
                     if (window.recaptchaVerifier) window.recaptchaVerifier.render();
                 });
         });
 
-        // Verify OTP
         btnVerifyOtp.addEventListener("click", () => {
             const code = document.getElementById("auth-otp").value;
             btnVerifyOtp.disabled = true;
-            btnVerifyOtp.textContent = "กำลังตรวจสอบ...";
+            btnVerifyOtp.textContent = "Verifying...";
             authErrorMsg.style.display = "none";
 
             window.confirmationResult.confirm(code).then((result) => {
-                showToast("เข้าสู่ระบบด้วยเบอร์โทรสำเร็จ", "success");
-                // Auth state observer hides modal
-                // Reset form for next time
+                showToast("Signed in successfully", "success");
                 phoneInputSection.style.display = "block";
                 otpInputSection.style.display = "none";
                 document.getElementById("auth-phone").value = "";
                 document.getElementById("auth-otp").value = "";
                 btnVerifyOtp.disabled = false;
-                btnVerifyOtp.textContent = "ยืนยันรหัสผ่าน";
+                btnVerifyOtp.textContent = "Verify Code";
             }).catch((error) => {
-                authErrorMsg.textContent = "รหัส OTP ไม่ถูกต้อง";
+                authErrorMsg.textContent = "Invalid OTP code";
                 authErrorMsg.style.display = "block";
                 btnVerifyOtp.disabled = false;
-                btnVerifyOtp.textContent = "ยืนยันรหัสผ่าน";
+                btnVerifyOtp.textContent = "Verify Code";
             });
         });
 
@@ -1238,10 +1060,9 @@ function setupEventListeners() {
     if (logoutBtn) {
         logoutBtn.addEventListener("click", (e) => {
             e.preventDefault();
-            if (confirm("ต้องการออกจากระบบหรือไม่?")) {
+            if (confirm("Sign out?")) {
                 auth.signOut().then(() => {
-                    showToast("ออกจากระบบสำเร็จ", "success");
-                    // Reset state locally so another user's data isn't left behind
+                    showToast("Signed out", "success");
                     state = {
                         selectedMonth: state.selectedMonth,
                         baseSalary: 0, incomes: [], expenses: [], installments: [], dcaList: [],
@@ -1254,9 +1075,9 @@ function setupEventListeners() {
         });
     }
 
-    // 1. Sidebar Navigation
+    // Sidebar Navigation
     document.querySelectorAll(".sidebar-menu .menu-item").forEach(item => {
-        if (item.id === "menu-logout") return; // Skip logout for normal view switching
+        if (item.id === "menu-logout") return;
         item.addEventListener("click", (e) => {
             e.preventDefault();
             const viewId = item.getAttribute("href").slice(1);
@@ -1264,15 +1085,12 @@ function setupEventListeners() {
         });
     });
 
-    // 2. Month Selector buttons
+    // Month Selector
     document.getElementById("prev-month-btn").addEventListener("click", () => {
         const [year, month] = state.selectedMonth.split("-").map(Number);
         let prevM = month - 1;
         let prevY = year;
-        if (prevM === 0) {
-            prevM = 12;
-            prevY = year - 1;
-        }
+        if (prevM === 0) { prevM = 12; prevY = year - 1; }
         state.selectedMonth = `${prevY}-${String(prevM).padStart(2, '0')}`;
         updateAppView();
     });
@@ -1281,25 +1099,21 @@ function setupEventListeners() {
         const [year, month] = state.selectedMonth.split("-").map(Number);
         let nextM = month + 1;
         let nextY = year;
-        if (nextM === 13) {
-            nextM = 1;
-            nextY = year + 1;
-        }
+        if (nextM === 13) { nextM = 1; nextY = year + 1; }
         state.selectedMonth = `${nextY}-${String(nextM).padStart(2, '0')}`;
         updateAppView();
     });
 
-    // 3. Salary Form Submission
+    // Salary Form
     document.getElementById("salary-form").addEventListener("submit", (e) => {
         e.preventDefault();
-        const sal = Number(document.getElementById("input-base-salary").value);
-        state.baseSalary = sal;
+        state.baseSalary = Number(document.getElementById("input-base-salary").value);
         saveStateToLocalStorage();
         updateAppView();
-        showToast("Base salary saved successfully", "success");
+        showToast("Salary saved", "success");
     });
 
-    // 4. Welfare Settings Save
+    // Welfare Settings
     document.getElementById("btn-save-welfare").addEventListener("click", () => {
         const isPercent = document.getElementById("pvd-type-percent").checked;
         const pvdVal = isPercent
@@ -1318,10 +1132,9 @@ function setupEventListeners() {
 
         saveStateToLocalStorage();
         updateAppView();
-        showToast("Welfare deduction system saved successfully", "success");
+        showToast("Settings saved", "success");
     });
 
-    // Toggle welfare configuration UI inputs dynamically
     document.querySelectorAll("input[name='pvd-type']").forEach(radio => {
         radio.addEventListener("change", (e) => togglePvdInputGroup(e.target.value));
     });
@@ -1329,21 +1142,20 @@ function setupEventListeners() {
         radio.addEventListener("change", (e) => toggleSsoInputGroup(e.target.value));
     });
 
-    // 5. Carry Over settings Toggle
+    // Carry Over Toggle
     document.getElementById("setting-carry-over-toggle").addEventListener("change", (e) => {
         state.carryOverEnabled = e.target.checked;
         saveStateToLocalStorage();
         updateAppView();
-        showToast(`Toggle Carry-Over System: ${state.carryOverEnabled ? 'Enabled' : 'Disabled'}`, "success");
+        showToast(`Carry-over ${state.carryOverEnabled ? 'enabled' : 'disabled'}`, "success");
     });
 
-    // 6. Modals Open triggers
+    // Modal Open Triggers
     document.getElementById("btn-add-income-modal").addEventListener("click", () => {
         document.getElementById("income-modal-form").reset();
         document.getElementById("modal-income-id").value = "";
-        document.getElementById("income-modal-title").textContent = "Add Additional Income";
+        document.getElementById("income-modal-title").textContent = "Add Income";
 
-        // Auto fill date with first day of selectedMonth or current day
         const today = new Date();
         const dateInput = document.getElementById("modal-income-date");
         dateInput.value = `${state.selectedMonth}-${String(today.getDate()).padStart(2, '0')}`;
@@ -1356,7 +1168,7 @@ function setupEventListeners() {
     document.getElementById("btn-add-expense-modal").addEventListener("click", () => {
         document.getElementById("expense-modal-form").reset();
         document.getElementById("modal-expense-id").value = "";
-        document.getElementById("expense-modal-title").textContent = "Save General Expense";
+        document.getElementById("expense-modal-title").textContent = "Add Expense";
 
         const today = new Date();
         const dateInput = document.getElementById("modal-expense-date");
@@ -1370,13 +1182,13 @@ function setupEventListeners() {
     document.getElementById("btn-add-dca-modal").addEventListener("click", () => {
         document.getElementById("dca-modal-form").reset();
         document.getElementById("modal-dca-id").value = "";
-        document.getElementById("dca-modal-title").textContent = "Save DCA Item";
+        document.getElementById("dca-modal-title").textContent = "Add DCA Investment";
 
         const today = new Date();
         const dateInput = document.getElementById("modal-dca-date");
         dateInput.value = `${state.selectedMonth}-${String(today.getDate()).padStart(2, '0')}`;
         document.getElementById("modal-dca-date-group").classList.add("hidden");
-        dateInput.removeAttribute("required"); // defaults to recurring
+        dateInput.removeAttribute("required");
 
         openModal("modal-dca");
     });
@@ -1387,11 +1199,11 @@ function setupEventListeners() {
         document.getElementById("modal-installment-interest").value = "0";
         document.getElementById("modal-installment-start").value = state.selectedMonth;
         document.getElementById("installment-calc-info").textContent = "Equal average per installment (0% Interest)";
-        document.getElementById("installment-modal-title").textContent = "Add Credit Card Installment";
+        document.getElementById("installment-modal-title").textContent = "Add Installment";
         openModal("modal-installment");
     });
 
-    // 7. Modals close buttons
+    // Modal Close Buttons
     document.getElementById("btn-close-income-modal").addEventListener("click", () => closeModal("modal-income"));
     document.getElementById("btn-cancel-income-modal").addEventListener("click", () => closeModal("modal-income"));
 
@@ -1404,14 +1216,13 @@ function setupEventListeners() {
     document.getElementById("btn-close-installment-modal").addEventListener("click", () => closeModal("modal-installment"));
     document.getElementById("btn-cancel-installment-modal").addEventListener("click", () => closeModal("modal-installment"));
 
-    // Close modals on clicking overlay backdrop
     document.querySelectorAll(".modal-overlay").forEach(overlay => {
         overlay.addEventListener("click", (e) => {
             if (e.target === overlay) closeModal(overlay.id);
         });
     });
 
-    // Hide date fields for recurring types in modals
+    // Date field toggles for recurring types
     document.getElementById("modal-income-type").addEventListener("change", (e) => {
         const dateGrp = document.getElementById("modal-income-date-group");
         const dateInput = document.getElementById("modal-income-date");
@@ -1448,7 +1259,7 @@ function setupEventListeners() {
         }
     });
 
-    // Installment month dropdown calculations helper
+    // Installment calculations
     const instMonthsSel = document.getElementById("modal-installment-months");
     const instCustomGrp = document.getElementById("modal-installment-months-custom-group");
     const instTotalInput = document.getElementById("modal-installment-total-amount");
@@ -1489,15 +1300,14 @@ function setupEventListeners() {
             instMonthlyInput.value = monthly.toFixed(2);
 
             if (interestRate > 0) {
-                document.getElementById("installment-calc-info").textContent = `Installment: ฿${monthly.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} for ${months} Months (Rate: ${interestRate}%/month)`;
+                document.getElementById("installment-calc-info").textContent = `฿${monthly.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} × ${months} mo (${interestRate}%/mo)`;
             } else {
-                document.getElementById("installment-calc-info").textContent = `Equal average per installment of ฿${monthly.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} for ${months} Months (0% Interest)`;
+                document.getElementById("installment-calc-info").textContent = `฿${monthly.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} × ${months} mo (0% interest)`;
             }
         }
     }
 
-    // Modal submit listeners
-    // 1. Income Form Save
+    // Form Submissions
     document.getElementById("income-modal-form").addEventListener("submit", (e) => {
         e.preventDefault();
         const id = document.getElementById("modal-income-id").value;
@@ -1507,30 +1317,20 @@ function setupEventListeners() {
         const date = document.getElementById("modal-income-date").value;
 
         if (id) {
-            // Edit existing
             const index = state.incomes.findIndex(i => i.id === id);
             if (index !== -1) {
                 state.incomes[index] = { id, title, amount, type, date: type === "recurring" ? "" : date };
             }
         } else {
-            // Create new
-            const newInc = {
-                id: generateId(),
-                title,
-                amount,
-                type,
-                date: type === "recurring" ? "" : date
-            };
-            state.incomes.push(newInc);
+            state.incomes.push({ id: generateId(), title, amount, type, date: type === "recurring" ? "" : date });
         }
 
         saveStateToLocalStorage();
         closeModal("modal-income");
         updateAppView();
-        showToast("Income saved successfully", "success");
+        showToast("Income saved", "success");
     });
 
-    // 2. Expense Form Save
     document.getElementById("expense-modal-form").addEventListener("submit", (e) => {
         e.preventDefault();
         const id = document.getElementById("modal-expense-id").value;
@@ -1546,24 +1346,15 @@ function setupEventListeners() {
                 state.expenses[index] = { id, title, amount, type, category, date: type === "recurring" ? "" : date };
             }
         } else {
-            const newExp = {
-                id: generateId(),
-                title,
-                amount,
-                type,
-                category,
-                date: type === "recurring" ? "" : date
-            };
-            state.expenses.push(newExp);
+            state.expenses.push({ id: generateId(), title, amount, type, category, date: type === "recurring" ? "" : date });
         }
 
         saveStateToLocalStorage();
         closeModal("modal-expense");
         updateAppView();
-        showToast("Expense saved successfully", "success");
+        showToast("Expense saved", "success");
     });
 
-    // 3. DCA Form Save
     document.getElementById("dca-modal-form").addEventListener("submit", (e) => {
         e.preventDefault();
         const id = document.getElementById("modal-dca-id").value;
@@ -1579,24 +1370,15 @@ function setupEventListeners() {
                 state.dcaList[index] = { id, title, amount, category, type, date: type === "recurring" ? "" : date };
             }
         } else {
-            const newDca = {
-                id: generateId(),
-                title,
-                amount,
-                category,
-                type,
-                date: type === "recurring" ? "" : date
-            };
-            state.dcaList.push(newDca);
+            state.dcaList.push({ id: generateId(), title, amount, category, type, date: type === "recurring" ? "" : date });
         }
 
         saveStateToLocalStorage();
         closeModal("modal-dca");
         updateAppView();
-        showToast("DCA saved successfully", "success");
+        showToast("DCA saved", "success");
     });
 
-    // 4. Installment Form Save
     document.getElementById("installment-modal-form").addEventListener("submit", (e) => {
         e.preventDefault();
         const id = document.getElementById("modal-installment-id").value;
@@ -1620,28 +1402,18 @@ function setupEventListeners() {
                 state.installments[index] = { id, title, totalAmount, monthlyAmount, totalMonths, startMonth, category };
             }
         } else {
-            const newInst = {
-                id: generateId(),
-                title,
-                totalAmount,
-                monthlyAmount,
-                totalMonths,
-                startMonth,
-                category
-            };
-            state.installments.push(newInst);
+            state.installments.push({ id: generateId(), title, totalAmount, monthlyAmount, totalMonths, startMonth, category });
         }
 
         saveStateToLocalStorage();
         closeModal("modal-installment");
         updateAppView();
-        showToast("Installment table saved successfully", "success");
+        showToast("Installment saved", "success");
     });
 
-    // 8. Settings View Backup Buttons
+    // Backup & Settings
     document.getElementById("btn-export-data").addEventListener("click", exportDataJSON);
 
-    // File upload triggers
     const triggerFileBtn = document.getElementById("btn-trigger-file");
     const fileInput = document.getElementById("file-import-input");
     triggerFileBtn.addEventListener("click", () => fileInput.click());
@@ -1655,27 +1427,23 @@ function setupEventListeners() {
     });
 
     document.getElementById("btn-reset-data").addEventListener("click", () => {
-        if (confirm("Warning: All financial data, installments, and savings will be permanently deleted. This cannot be undone. Do you wish to continue?")) {
-            localStorage.removeItem("fintrack_state");
+        if (confirm("Warning: All data will be permanently deleted. Continue?")) {
+            localStorage.removeItem("kimcash_state");
             state = {
                 selectedMonth: "",
-                baseSalary: 0,
-                incomes: [],
-                expenses: [],
-                installments: [],
-                dcaList: [],
+                baseSalary: 0, incomes: [], expenses: [], installments: [], dcaList: [],
                 welfareSettings: { pvdType: "percent", pvdValue: 3, ssoType: "auto", ssoValue: 750 },
                 carryOverEnabled: true
             };
             initDefaultState();
             saveStateToLocalStorage();
             updateAppView();
-            showToast("Database wiped successfully", "error");
+            showToast("All data cleared", "error");
         }
     });
 }
 
-// JSON Backup Utilities
+// ==================== BACKUP UTILITIES ====================
 function exportDataJSON() {
     const dataStr = JSON.stringify(state, null, 4);
     const blob = new Blob([dataStr], { type: "application/json" });
@@ -1683,7 +1451,7 @@ function exportDataJSON() {
 
     const a = document.createElement("a");
     a.href = url;
-    a.download = `fintrack_backup_${state.selectedMonth}.json`;
+    a.download = `kimcash_backup_${state.selectedMonth}.json`;
     document.body.appendChild(a);
     a.click();
 
@@ -1692,7 +1460,7 @@ function exportDataJSON() {
         URL.revokeObjectURL(url);
     }, 0);
 
-    showToast("Backup file exported successfully");
+    showToast("Backup exported");
 }
 
 function importDataJSON(file) {
@@ -1701,7 +1469,6 @@ function importDataJSON(file) {
         try {
             const parsed = JSON.parse(e.target.result);
 
-            // Check essential structures to validate backup structure
             if (
                 parsed.hasOwnProperty("baseSalary") &&
                 parsed.hasOwnProperty("incomes") &&
@@ -1711,13 +1478,13 @@ function importDataJSON(file) {
                 state = { ...state, ...parsed };
                 saveStateToLocalStorage();
                 updateAppView();
-                showToast("Backup data imported successfully!", "success");
+                showToast("Data imported successfully", "success");
             } else {
                 showToast("Invalid file structure", "error");
             }
         } catch (err) {
             console.error(err);
-            showToast("Cannot read JSON file or file is corrupted", "error");
+            showToast("Failed to read file", "error");
         }
     };
     reader.readAsText(file);
@@ -1732,24 +1499,18 @@ function formatCurrency(num) {
     return `฿${Number(num).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function formatDateThai(dateStr) {
+function formatDate(dateStr) {
     if (!dateStr) return "";
     const [y, m, d] = dateStr.split("-").map(Number);
-    const shortMonth = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-    ];
-    return `${d} ${shortMonth[m - 1]} ${y}`; // Returns e.g. "22 มิ.ย. 69"
+    const shortMonth = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return `${d} ${shortMonth[m - 1]} ${y}`;
 }
 
-function formatMonthYearThai(monthStr) {
+function formatMonthYear(monthStr) {
     if (!monthStr) return "";
     const [y, m] = monthStr.split("-").map(Number);
-    const shortMonth = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-    ];
-    return `${shortMonth[m - 1]} ${y}`; // Returns e.g. "มิ.ย. 2569"
+    const shortMonth = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return `${shortMonth[m - 1]} ${y}`;
 }
 
 function escapeHTML(str) {
