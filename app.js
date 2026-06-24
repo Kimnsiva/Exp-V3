@@ -8,6 +8,7 @@ let state = {
     expenses: [],      // { id, title, amount, type: 'one-time'|'recurring', category, date }
     installments: [],  // { id, title, totalAmount, monthlyAmount, totalMonths, startMonth, category }
     dcaList: [],       // { id, title, amount, type: 'one-time'|'recurring', category, date }
+    creditCards: [],   // { id, name, bank, limit }
     welfareSettings: {
         pvdType: "percent", // percent | fixed
         pvdValue: 3,
@@ -53,14 +54,113 @@ if (isFirebaseConfigured) {
             if (mobileLogoutBtn) mobileLogoutBtn.style.display = "flex";
             if (mobileForceSyncBtn) mobileForceSyncBtn.style.display = "flex";
 
-            db.collection("users").doc(user.uid).onSnapshot(doc => {
-                console.log("Firebase data loaded for user:", user.uid, doc.data());
+            const userRef = db.collection("users").doc(user.uid);
+
+            // Migration from legacy single document format to subcollections
+            userRef.get().then(doc => {
                 if (doc.exists) {
-                    state = { ...state, ...doc.data() };
-                    localStorage.setItem("kimcash_state", JSON.stringify(state));
-                    updateAppView();
+                    const data = doc.data();
+                    if (!data.migratedToSubcollections && (data.incomes || data.expenses || data.installments || data.dcaList)) {
+                        console.log("Migrating legacy data to subcollections...");
+                        const batch = db.batch();
+
+                        if (Array.isArray(data.incomes)) {
+                            data.incomes.forEach(item => {
+                                const ref = userRef.collection("incomes").doc(item.id || generateId());
+                                batch.set(ref, item);
+                            });
+                        }
+                        if (Array.isArray(data.expenses)) {
+                            data.expenses.forEach(item => {
+                                const ref = userRef.collection("expenses").doc(item.id || generateId());
+                                batch.set(ref, item);
+                            });
+                        }
+                        if (Array.isArray(data.installments)) {
+                            data.installments.forEach(item => {
+                                const ref = userRef.collection("installments").doc(item.id || generateId());
+                                batch.set(ref, item);
+                            });
+                        }
+                        if (Array.isArray(data.dcaList)) {
+                            data.dcaList.forEach(item => {
+                                const ref = userRef.collection("dcaList").doc(item.id || generateId());
+                                batch.set(ref, item);
+                            });
+                        }
+
+                        batch.set(userRef, {
+                            migratedToSubcollections: true,
+                            incomes: firebase.firestore.FieldValue.delete(),
+                            expenses: firebase.firestore.FieldValue.delete(),
+                            installments: firebase.firestore.FieldValue.delete(),
+                            dcaList: firebase.firestore.FieldValue.delete()
+                        }, { merge: true });
+
+                        batch.commit()
+                            .then(() => console.log("Migration to subcollections complete!"))
+                            .catch(err => console.error("Error performing data migration:", err));
+                    }
                 }
-            }, err => console.error("Error fetching data in real-time:", err));
+            }).catch(err => console.error("Error reading user doc for migration:", err));
+
+            // Set up real-time subcollection listeners
+            // 1. Settings / Main doc
+            userRef.onSnapshot(doc => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    state.baseSalary = data.baseSalary !== undefined ? data.baseSalary : state.baseSalary;
+                    state.welfareSettings = data.welfareSettings || state.welfareSettings;
+                    state.carryOverEnabled = data.carryOverEnabled !== undefined ? data.carryOverEnabled : state.carryOverEnabled;
+                    saveLocalAndRender();
+                }
+            }, err => console.error("Error listening to user settings:", err));
+
+            // 2. Incomes
+            userRef.collection("incomes").onSnapshot(snapshot => {
+                state.incomes = [];
+                snapshot.forEach(doc => {
+                    state.incomes.push({ id: doc.id, ...doc.data() });
+                });
+                saveLocalAndRender();
+            }, err => console.error("Error listening to incomes:", err));
+
+            // 3. Expenses
+            userRef.collection("expenses").onSnapshot(snapshot => {
+                state.expenses = [];
+                snapshot.forEach(doc => {
+                    state.expenses.push({ id: doc.id, ...doc.data() });
+                });
+                saveLocalAndRender();
+            }, err => console.error("Error listening to expenses:", err));
+
+            // 4. Installments
+            userRef.collection("installments").onSnapshot(snapshot => {
+                state.installments = [];
+                snapshot.forEach(doc => {
+                    state.installments.push({ id: doc.id, ...doc.data() });
+                });
+                saveLocalAndRender();
+            }, err => console.error("Error listening to installments:", err));
+
+            // 5. DCA List
+            userRef.collection("dcaList").onSnapshot(snapshot => {
+                state.dcaList = [];
+                snapshot.forEach(doc => {
+                    state.dcaList.push({ id: doc.id, ...doc.data() });
+                });
+                saveLocalAndRender();
+            }, err => console.error("Error listening to DCA:", err));
+
+            // 6. Credit Cards
+            userRef.collection("creditCards").onSnapshot(snapshot => {
+                state.creditCards = [];
+                snapshot.forEach(doc => {
+                    state.creditCards.push({ id: doc.id, ...doc.data() });
+                });
+                saveLocalAndRender();
+            }, err => console.error("Error listening to credit cards:", err));
+
         } else {
             if (overlay) overlay.style.display = "flex";
             if (appContainer) appContainer.style.display = "none";
@@ -108,12 +208,20 @@ function initDefaultState() {
 }
 
 // ==================== STORAGE OPERATIONS ====================
+function saveLocalAndRender() {
+    localStorage.setItem("kimcash_state", JSON.stringify(state));
+    updateAppView();
+}
+
 function saveStateToLocalStorage() {
     localStorage.setItem("kimcash_state", JSON.stringify(state));
 
     if (isFirebaseConfigured && db && auth && auth.currentUser) {
-        db.collection("users").doc(auth.currentUser.uid).set(state)
-            .catch(err => console.error("Error saving to Firebase:", err));
+        db.collection("users").doc(auth.currentUser.uid).set({
+            baseSalary: state.baseSalary,
+            welfareSettings: state.welfareSettings,
+            carryOverEnabled: state.carryOverEnabled
+        }, { merge: true }).catch(err => console.error("Error saving settings to Firebase:", err));
     }
 }
 
@@ -123,10 +231,124 @@ function loadStateFromLocalStorage() {
         try {
             const parsed = JSON.parse(saved);
             state = { ...state, ...parsed };
+            state.creditCards = state.creditCards || [];
         } catch (e) {
             console.error("Error parsing saved state:", e);
             showToast("Failed to load saved data", "error");
         }
+    } else {
+        state.creditCards = [];
+    }
+}
+
+// ==================== FIREBASE CRUD WRAPPERS ====================
+function saveIncomeFirebase(income) {
+    if (isFirebaseConfigured && db && auth && auth.currentUser) {
+        db.collection("users").doc(auth.currentUser.uid).collection("incomes").doc(income.id).set(income)
+            .catch(err => console.error("Error saving income to Firebase:", err));
+    } else {
+        const index = state.incomes.findIndex(i => i.id === income.id);
+        if (index !== -1) state.incomes[index] = income;
+        else state.incomes.push(income);
+        saveLocalAndRender();
+    }
+}
+
+function deleteIncomeFirebase(id) {
+    if (isFirebaseConfigured && db && auth && auth.currentUser) {
+        db.collection("users").doc(auth.currentUser.uid).collection("incomes").doc(id).delete()
+            .catch(err => console.error("Error deleting income from Firebase:", err));
+    } else {
+        state.incomes = state.incomes.filter(i => i.id !== id);
+        saveLocalAndRender();
+    }
+}
+
+function saveExpenseFirebase(expense) {
+    if (isFirebaseConfigured && db && auth && auth.currentUser) {
+        db.collection("users").doc(auth.currentUser.uid).collection("expenses").doc(expense.id).set(expense)
+            .catch(err => console.error("Error saving expense to Firebase:", err));
+    } else {
+        const index = state.expenses.findIndex(e => e.id === expense.id);
+        if (index !== -1) state.expenses[index] = expense;
+        else state.expenses.push(expense);
+        saveLocalAndRender();
+    }
+}
+
+function deleteExpenseFirebase(id) {
+    if (isFirebaseConfigured && db && auth && auth.currentUser) {
+        db.collection("users").doc(auth.currentUser.uid).collection("expenses").doc(id).delete()
+            .catch(err => console.error("Error deleting expense from Firebase:", err));
+    } else {
+        state.expenses = state.expenses.filter(e => e.id !== id);
+        saveLocalAndRender();
+    }
+}
+
+function saveInstallmentFirebase(inst) {
+    if (isFirebaseConfigured && db && auth && auth.currentUser) {
+        db.collection("users").doc(auth.currentUser.uid).collection("installments").doc(inst.id).set(inst)
+            .catch(err => console.error("Error saving installment to Firebase:", err));
+    } else {
+        const index = state.installments.findIndex(i => i.id === inst.id);
+        if (index !== -1) state.installments[index] = inst;
+        else state.installments.push(inst);
+        saveLocalAndRender();
+    }
+}
+
+function deleteInstallmentFirebase(id) {
+    if (isFirebaseConfigured && db && auth && auth.currentUser) {
+        db.collection("users").doc(auth.currentUser.uid).collection("installments").doc(id).delete()
+            .catch(err => console.error("Error deleting installment from Firebase:", err));
+    } else {
+        state.installments = state.installments.filter(i => i.id !== id);
+        saveLocalAndRender();
+    }
+}
+
+function saveDcaFirebase(dca) {
+    if (isFirebaseConfigured && db && auth && auth.currentUser) {
+        db.collection("users").doc(auth.currentUser.uid).collection("dcaList").doc(dca.id).set(dca)
+            .catch(err => console.error("Error saving DCA to Firebase:", err));
+    } else {
+        const index = state.dcaList.findIndex(d => d.id === dca.id);
+        if (index !== -1) state.dcaList[index] = dca;
+        else state.dcaList.push(dca);
+        saveLocalAndRender();
+    }
+}
+
+function deleteDcaFirebase(id) {
+    if (isFirebaseConfigured && db && auth && auth.currentUser) {
+        db.collection("users").doc(auth.currentUser.uid).collection("dcaList").doc(id).delete()
+            .catch(err => console.error("Error deleting DCA from Firebase:", err));
+    } else {
+        state.dcaList = state.dcaList.filter(d => d.id !== id);
+        saveLocalAndRender();
+    }
+}
+
+function saveCreditCardFirebase(card) {
+    if (isFirebaseConfigured && db && auth && auth.currentUser) {
+        db.collection("users").doc(auth.currentUser.uid).collection("creditCards").doc(card.id).set(card)
+            .catch(err => console.error("Error saving credit card to Firebase:", err));
+    } else {
+        const index = state.creditCards.findIndex(c => c.id === card.id);
+        if (index !== -1) state.creditCards[index] = card;
+        else state.creditCards.push(card);
+        saveLocalAndRender();
+    }
+}
+
+function deleteCreditCardFirebase(id) {
+    if (isFirebaseConfigured && db && auth && auth.currentUser) {
+        db.collection("users").doc(auth.currentUser.uid).collection("creditCards").doc(id).delete()
+            .catch(err => console.error("Error deleting credit card from Firebase:", err));
+    } else {
+        state.creditCards = state.creditCards.filter(c => c.id !== id);
+        saveLocalAndRender();
     }
 }
 
@@ -307,6 +529,7 @@ function updateAppView() {
     renderDeductionsView(currentData);
     renderExpensesView(currentData);
     renderInstallmentsView(currentData);
+    renderCreditCardsTable();
     renderSettingsView();
 }
 
@@ -715,13 +938,15 @@ function renderInstallmentsView(data) {
         }
 
         const catLabel = categoryStyles[inst.category]?.label || "Others";
+        const card = state.creditCards ? state.creditCards.find(c => c.id === inst.creditor) : null;
+        const cardDisplay = card ? card.name : (inst.creditor || '—');
 
         row.innerHTML = `
             <td data-label="Product/Service">
                 <strong>${escapeHTML(inst.title)}</strong>
                 <span class="quick-item-meta">${catLabel}</span>
             </td>
-            <td data-label="Creditor / Card">${escapeHTML(inst.creditor || '—')}</td>
+            <td data-label="Creditor / Card">${escapeHTML(cardDisplay)}</td>
             <td data-label="Category"><span class="badge badge-credit">${catLabel}</span></td>
             <td data-label="Total Value" class="td-amount">฿${Number(inst.totalAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td data-label="Monthly" class="td-amount text-danger">฿${Number(inst.monthlyAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
@@ -748,6 +973,44 @@ function renderInstallmentsView(data) {
 
     if (tbody.children.length === 0) {
         tbody.innerHTML = `<tr><td colspan="9" class="text-center no-data">No installment plans</td></tr>`;
+    }
+}
+
+// ==================== VIEW: CREDIT CARDS ====================
+function renderCreditCardsTable() {
+    const tbody = document.getElementById("credit-card-table-body");
+    if (!tbody) return;
+    
+    tbody.innerHTML = "";
+    
+    state.creditCards.forEach(card => {
+        const row = document.createElement("tr");
+        const limitDisplay = card.limit ? `฿${Number(card.limit).toLocaleString()}` : "—";
+        
+        row.innerHTML = `
+            <td data-label="Card Name"><strong>${escapeHTML(card.name)}</strong></td>
+            <td data-label="Bank / Issuer">${escapeHTML(card.bank || '—')}</td>
+            <td data-label="Limit" class="text-right">${limitDisplay}</td>
+            <td data-label="Actions" class="text-center">
+                <button class="btn-action-icon btn-edit" onclick="openEditCreditCard('${card.id}')" title="Edit">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                </button>
+                <button class="btn-action-icon btn-delete" onclick="deleteCreditCard('${card.id}')" title="Delete">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    if (state.creditCards.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center no-data">No credit cards added</td></tr>`;
     }
 }
 
@@ -870,9 +1133,7 @@ window.openEditIncome = function (id) {
 
 window.deleteIncome = function (id) {
     if (confirm("Delete this income item?")) {
-        state.incomes = state.incomes.filter(i => i.id !== id);
-        saveStateToLocalStorage();
-        updateAppView();
+        deleteIncomeFirebase(id);
         showToast("Income deleted", "success");
     }
 };
@@ -903,9 +1164,7 @@ window.openEditDca = function (id) {
 
 window.deleteDca = function (id) {
     if (confirm("Delete this DCA item?")) {
-        state.dcaList = state.dcaList.filter(d => d.id !== id);
-        saveStateToLocalStorage();
-        updateAppView();
+        deleteDcaFirebase(id);
         showToast("DCA item deleted", "success");
     }
 };
@@ -936,9 +1195,7 @@ window.openEditExpense = function (id) {
 
 window.deleteExpense = function (id) {
     if (confirm("Delete this expense?")) {
-        state.expenses = state.expenses.filter(e => e.id !== id);
-        saveStateToLocalStorage();
-        updateAppView();
+        deleteExpenseFirebase(id);
         showToast("Expense deleted", "success");
     }
 };
@@ -949,6 +1206,7 @@ window.openEditInstallment = function (id) {
 
     document.getElementById("modal-installment-id").value = inst.id;
     document.getElementById("modal-installment-title").value = inst.title;
+    populateCardDropdown(inst.creditor);
     document.getElementById("modal-installment-creditor").value = inst.creditor || "";
     document.getElementById("modal-installment-total-amount").value = inst.totalAmount;
     document.getElementById("modal-installment-interest").value = inst.interestRate || 0;
@@ -982,12 +1240,55 @@ window.openEditInstallment = function (id) {
 
 window.deleteInstallment = function (id) {
     if (confirm("Delete this installment plan?")) {
-        state.installments = state.installments.filter(i => i.id !== id);
-        saveStateToLocalStorage();
-        updateAppView();
+        deleteInstallmentFirebase(id);
         showToast("Installment deleted", "success");
     }
 };
+
+window.openEditCreditCard = function (id) {
+    const card = state.creditCards.find(c => c.id === id);
+    if (!card) return;
+
+    document.getElementById("modal-card-id").value = card.id;
+    document.getElementById("modal-card-name").value = card.name;
+    document.getElementById("modal-card-bank").value = card.bank || "";
+    document.getElementById("modal-card-limit").value = card.limit || "";
+
+    document.getElementById("credit-card-modal-title").textContent = "Edit Credit Card";
+    openModal("modal-credit-card");
+};
+
+window.deleteCreditCard = function (id) {
+    if (confirm("Delete this credit card? Existing installments on this card will lose their card linkage.")) {
+        deleteCreditCardFirebase(id);
+        showToast("Credit card deleted", "success");
+    }
+};
+
+function populateCardDropdown(extraValue) {
+    const select = document.getElementById("modal-installment-creditor");
+    if (!select) return;
+    select.innerHTML = '<option value="" disabled selected>Select Card</option>';
+    
+    let extraValueMatched = false;
+    
+    state.creditCards.forEach(card => {
+        const option = document.createElement("option");
+        option.value = card.id;
+        option.textContent = `${card.name} (${card.bank || 'No Bank'})`;
+        select.appendChild(option);
+        if (extraValue && card.id === extraValue) {
+            extraValueMatched = true;
+        }
+    });
+    
+    if (extraValue && !extraValueMatched) {
+        const option = document.createElement("option");
+        option.value = extraValue;
+        option.textContent = extraValue;
+        select.appendChild(option);
+    }
+}
 
 // ==================== EVENT LISTENERS ====================
 function setupEventListeners() {
@@ -1039,7 +1340,7 @@ function setupEventListeners() {
                 showToast("Signed out", "success");
                 state = {
                     selectedMonth: state.selectedMonth,
-                    baseSalary: 0, incomes: [], expenses: [], installments: [], dcaList: [],
+                    baseSalary: 0, incomes: [], expenses: [], installments: [], dcaList: [], creditCards: [],
                     welfareSettings: { pvdType: "percent", pvdValue: 3, ssoType: "auto", ssoValue: 750 },
                     carryOverEnabled: true
                 };
@@ -1186,6 +1487,7 @@ function setupEventListeners() {
         document.getElementById("modal-installment-months-custom-group").classList.add("hidden");
         document.getElementById("installment-calc-info").textContent = "Equal average per installment (0% Interest)";
         document.getElementById("installment-modal-title").textContent = "Add Installment";
+        populateCardDropdown();
         openModal("modal-installment");
     });
 
@@ -1201,6 +1503,41 @@ function setupEventListeners() {
 
     document.getElementById("btn-close-installment-modal").addEventListener("click", () => closeModal("modal-installment"));
     document.getElementById("btn-cancel-installment-modal").addEventListener("click", () => closeModal("modal-installment"));
+
+    // Credit Card Modal Listeners
+    document.getElementById("btn-add-card-modal").addEventListener("click", () => {
+        document.getElementById("credit-card-modal-form").reset();
+        document.getElementById("modal-card-id").value = "";
+        document.getElementById("credit-card-modal-title").textContent = "Add Credit Card";
+        openModal("modal-credit-card");
+    });
+
+    document.getElementById("btn-close-card-modal").addEventListener("click", () => closeModal("modal-credit-card"));
+    document.getElementById("btn-cancel-card-modal").addEventListener("click", () => closeModal("modal-credit-card"));
+
+    document.getElementById("credit-card-modal-form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const id = document.getElementById("modal-card-id").value || generateId();
+        const name = document.getElementById("modal-card-name").value;
+        const bank = document.getElementById("modal-card-bank").value;
+        const limitVal = document.getElementById("modal-card-limit").value;
+        const limit = limitVal ? Number(limitVal) : null;
+
+        saveCreditCardFirebase({ id, name, bank, limit });
+        closeModal("modal-credit-card");
+        showToast("Credit card saved", "success");
+    });
+
+    const linkAddCard = document.getElementById("link-add-card-from-modal");
+    if (linkAddCard) {
+        linkAddCard.addEventListener("click", (e) => {
+            e.preventDefault();
+            document.getElementById("credit-card-modal-form").reset();
+            document.getElementById("modal-card-id").value = "";
+            document.getElementById("credit-card-modal-title").textContent = "Add Credit Card";
+            openModal("modal-credit-card");
+        });
+    }
 
     document.querySelectorAll(".modal-overlay").forEach(overlay => {
         overlay.addEventListener("click", (e) => {
@@ -1296,78 +1633,48 @@ function setupEventListeners() {
     // Form Submissions
     document.getElementById("income-modal-form").addEventListener("submit", (e) => {
         e.preventDefault();
-        const id = document.getElementById("modal-income-id").value;
+        const id = document.getElementById("modal-income-id").value || generateId();
         const title = document.getElementById("modal-income-title").value;
         const amount = Number(document.getElementById("modal-income-amount").value);
         const type = document.getElementById("modal-income-type").value;
         const date = document.getElementById("modal-income-date").value;
 
-        if (id) {
-            const index = state.incomes.findIndex(i => i.id === id);
-            if (index !== -1) {
-                state.incomes[index] = { id, title, amount, type, date: type === "recurring" ? "" : date };
-            }
-        } else {
-            state.incomes.push({ id: generateId(), title, amount, type, date: type === "recurring" ? "" : date });
-        }
-
-        saveStateToLocalStorage();
+        saveIncomeFirebase({ id, title, amount, type, date: type === "recurring" ? "" : date });
         closeModal("modal-income");
-        updateAppView();
         showToast("Income saved", "success");
     });
 
     document.getElementById("expense-modal-form").addEventListener("submit", (e) => {
         e.preventDefault();
-        const id = document.getElementById("modal-expense-id").value;
+        const id = document.getElementById("modal-expense-id").value || generateId();
         const title = document.getElementById("modal-expense-title").value;
         const amount = Number(document.getElementById("modal-expense-amount").value);
         const type = document.getElementById("modal-expense-type").value;
         const category = document.getElementById("modal-expense-category").value;
         const date = document.getElementById("modal-expense-date").value;
 
-        if (id) {
-            const index = state.expenses.findIndex(e => e.id === id);
-            if (index !== -1) {
-                state.expenses[index] = { id, title, amount, type, category, date: type === "recurring" ? "" : date };
-            }
-        } else {
-            state.expenses.push({ id: generateId(), title, amount, type, category, date: type === "recurring" ? "" : date });
-        }
-
-        saveStateToLocalStorage();
+        saveExpenseFirebase({ id, title, amount, type, category, date: type === "recurring" ? "" : date });
         closeModal("modal-expense");
-        updateAppView();
         showToast("Expense saved", "success");
     });
 
     document.getElementById("dca-modal-form").addEventListener("submit", (e) => {
         e.preventDefault();
-        const id = document.getElementById("modal-dca-id").value;
+        const id = document.getElementById("modal-dca-id").value || generateId();
         const title = document.getElementById("modal-dca-title").value;
         const amount = Number(document.getElementById("modal-dca-amount").value);
         const category = document.getElementById("modal-dca-category").value;
         const type = document.getElementById("modal-dca-type").value;
         const date = document.getElementById("modal-dca-date").value;
 
-        if (id) {
-            const index = state.dcaList.findIndex(d => d.id === id);
-            if (index !== -1) {
-                state.dcaList[index] = { id, title, amount, category, type, date: type === "recurring" ? "" : date };
-            }
-        } else {
-            state.dcaList.push({ id: generateId(), title, amount, category, type, date: type === "recurring" ? "" : date });
-        }
-
-        saveStateToLocalStorage();
+        saveDcaFirebase({ id, title, amount, category, type, date: type === "recurring" ? "" : date });
         closeModal("modal-dca");
-        updateAppView();
         showToast("DCA saved", "success");
     });
 
     document.getElementById("installment-modal-form").addEventListener("submit", (e) => {
         e.preventDefault();
-        const id = document.getElementById("modal-installment-id").value;
+        const id = document.getElementById("modal-installment-id").value || generateId();
         const title = document.getElementById("modal-installment-title").value;
         const creditor = document.getElementById("modal-installment-creditor").value;
         const totalAmount = Number(document.getElementById("modal-installment-total-amount").value);
@@ -1383,18 +1690,8 @@ function setupEventListeners() {
             totalMonths = Number(instMonthsSel.value);
         }
 
-        if (id) {
-            const index = state.installments.findIndex(i => i.id === id);
-            if (index !== -1) {
-                state.installments[index] = { id, title, creditor, totalAmount, interestRate, monthlyAmount, totalMonths, startMonth, category };
-            }
-        } else {
-            state.installments.push({ id: generateId(), title, creditor, totalAmount, interestRate, monthlyAmount, totalMonths, startMonth, category });
-        }
-
-        saveStateToLocalStorage();
+        saveInstallmentFirebase({ id, title, creditor, totalAmount, interestRate, monthlyAmount, totalMonths, startMonth, category });
         closeModal("modal-installment");
-        updateAppView();
         showToast("Installment saved", "success");
     });
 
@@ -1418,7 +1715,7 @@ function setupEventListeners() {
             localStorage.removeItem("kimcash_state");
             state = {
                 selectedMonth: "",
-                baseSalary: 0, incomes: [], expenses: [], installments: [], dcaList: [],
+                baseSalary: 0, incomes: [], expenses: [], installments: [], dcaList: [], creditCards: [],
                 welfareSettings: { pvdType: "percent", pvdValue: 3, ssoType: "auto", ssoValue: 750 },
                 carryOverEnabled: true
             };
