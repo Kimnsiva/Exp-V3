@@ -974,86 +974,67 @@ window.deleteInstallment = function (id) {
 
 // ==================== EVENT LISTENERS ====================
 function setupEventListeners() {
-    // Phone Auth Logic (Phone Only)
-    const phoneAuthForm = document.getElementById("phone-auth-form");
+    // Email Auth Logic
+    const emailAuthForm = document.getElementById("email-auth-form");
     const authErrorMsg = document.getElementById("auth-error-msg");
     const logoutBtn = document.getElementById("menu-logout");
+    let isLoginMode = true;
 
-    if (phoneAuthForm) {
-        const phoneInputSection = document.getElementById("phone-input-section");
-        const otpInputSection = document.getElementById("otp-input-section");
-        const btnSendOtp = document.getElementById("btn-send-otp");
-        const btnVerifyOtp = document.getElementById("btn-verify-otp");
-        const btnCancelPhone = document.getElementById("btn-cancel-phone");
+    if (emailAuthForm) {
+        const btnLoginEmail = document.getElementById("btn-login-email");
+        const btnToggleRegister = document.getElementById("btn-toggle-register");
 
-        // Initialize Recaptcha
-        if (isFirebaseConfigured && !window.recaptchaVerifier) {
-            window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
-                'size': 'normal',
-                'callback': (response) => { }
-            });
-            window.recaptchaVerifier.render();
-        }
-
-        phoneAuthForm.addEventListener("submit", (e) => {
+        btnToggleRegister.addEventListener("click", (e) => {
             e.preventDefault();
-            const phoneVal = document.getElementById("auth-phone").value.replace(/^0+/, '');
-            if (phoneVal.length < 8) {
-                authErrorMsg.textContent = "Invalid phone number";
-                authErrorMsg.style.display = "block";
-                return;
+            isLoginMode = !isLoginMode;
+            if (isLoginMode) {
+                btnLoginEmail.textContent = "Sign In";
+                btnToggleRegister.textContent = "Register here";
+                btnToggleRegister.parentElement.innerHTML = `No account? <a href="#" id="btn-toggle-register" style="color: var(--color-primary); font-weight: 500;">Register here</a>`;
+            } else {
+                btnLoginEmail.textContent = "Register";
+                btnToggleRegister.textContent = "Sign in here";
+                btnToggleRegister.parentElement.innerHTML = `Already have an account? <a href="#" id="btn-toggle-register" style="color: var(--color-primary); font-weight: 500;">Sign in here</a>`;
             }
-            const phoneNumber = "+66" + phoneVal;
-
-            btnSendOtp.disabled = true;
-            btnSendOtp.textContent = "Sending...";
-            authErrorMsg.style.display = "none";
-
-            auth.signInWithPhoneNumber(phoneNumber, window.recaptchaVerifier)
-                .then((confirmationResult) => {
-                    window.confirmationResult = confirmationResult;
-                    phoneInputSection.style.display = "none";
-                    otpInputSection.style.display = "block";
-                    showToast("OTP sent successfully", "success");
-                    btnSendOtp.disabled = false;
-                    btnSendOtp.textContent = "Send OTP";
-                }).catch((error) => {
-                    authErrorMsg.textContent = error.message;
-                    authErrorMsg.style.display = "block";
-                    btnSendOtp.disabled = false;
-                    btnSendOtp.textContent = "Send OTP";
-                    if (window.recaptchaVerifier) window.recaptchaVerifier.render();
-                });
+            
+            // Re-attach listener since we replaced innerHTML
+            document.getElementById("btn-toggle-register").addEventListener("click", arguments.callee);
         });
 
-        btnVerifyOtp.addEventListener("click", () => {
-            const code = document.getElementById("auth-otp").value;
-            btnVerifyOtp.disabled = true;
-            btnVerifyOtp.textContent = "Verifying...";
+        emailAuthForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const email = document.getElementById("auth-email").value;
+            const password = document.getElementById("auth-password").value;
+
+            btnLoginEmail.disabled = true;
+            btnLoginEmail.textContent = "Processing...";
             authErrorMsg.style.display = "none";
 
-            window.confirmationResult.confirm(code).then((result) => {
-                showToast("Signed in successfully", "success");
-                phoneInputSection.style.display = "block";
-                otpInputSection.style.display = "none";
-                document.getElementById("auth-phone").value = "";
-                document.getElementById("auth-otp").value = "";
-                btnVerifyOtp.disabled = false;
-                btnVerifyOtp.textContent = "Verify Code";
-            }).catch((error) => {
-                authErrorMsg.textContent = "Invalid OTP code";
-                authErrorMsg.style.display = "block";
-                btnVerifyOtp.disabled = false;
-                btnVerifyOtp.textContent = "Verify Code";
-            });
-        });
-
-        btnCancelPhone.addEventListener("click", () => {
-            phoneInputSection.style.display = "block";
-            otpInputSection.style.display = "none";
-            document.getElementById("auth-otp").value = "";
-            authErrorMsg.style.display = "none";
-            if (window.recaptchaVerifier) window.recaptchaVerifier.render();
+            if (isLoginMode) {
+                auth.signInWithEmailAndPassword(email, password)
+                    .then(() => {
+                        showToast("Signed in successfully", "success");
+                        btnLoginEmail.disabled = false;
+                        btnLoginEmail.textContent = "Sign In";
+                    }).catch((error) => {
+                        authErrorMsg.textContent = error.message;
+                        authErrorMsg.style.display = "block";
+                        btnLoginEmail.disabled = false;
+                        btnLoginEmail.textContent = "Sign In";
+                    });
+            } else {
+                auth.createUserWithEmailAndPassword(email, password)
+                    .then(() => {
+                        showToast("Account created successfully", "success");
+                        btnLoginEmail.disabled = false;
+                        btnLoginEmail.textContent = "Register";
+                    }).catch((error) => {
+                        authErrorMsg.textContent = error.message;
+                        authErrorMsg.style.display = "block";
+                        btnLoginEmail.disabled = false;
+                        btnLoginEmail.textContent = "Register";
+                    });
+            }
         });
     }
 
