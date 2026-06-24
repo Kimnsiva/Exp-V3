@@ -725,6 +725,12 @@ input, select, textarea, button {
     transition: var(--transition-fast);
 }
 
+.btn svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
 .btn-sm {
     padding: 0.35rem 0.75rem;
     font-size: 0.8rem;
