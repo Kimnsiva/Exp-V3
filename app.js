@@ -39,17 +39,19 @@ if (isFirebaseConfigured) {
     auth.onAuthStateChanged((user) => {
         const overlay = document.getElementById("auth-overlay");
         const logoutBtn = document.getElementById("menu-logout");
+        const forceSyncBtn = document.getElementById("menu-force-sync");
+        const mobileLogoutBtn = document.getElementById("mobile-logout");
+        const mobileForceSyncBtn = document.getElementById("mobile-force-sync");
+
+        const appContainer = document.getElementById("app-container");
+
         if (user) {
             if (overlay) overlay.style.display = "none";
+            if (appContainer) appContainer.style.display = "";
             if (logoutBtn) logoutBtn.style.display = "flex";
-
-            db.collection("users").doc(user.uid).get().then(doc => {
-                if (doc.exists) {
-                    state = { ...state, ...doc.data() };
-                    localStorage.setItem("kimcash_state", JSON.stringify(state));
-                    updateAppView();
-                }
-            }).catch(err => console.error("Error loading from Firebase:", err));
+            if (forceSyncBtn) forceSyncBtn.style.display = "flex";
+            if (mobileLogoutBtn) mobileLogoutBtn.style.display = "flex";
+            if (mobileForceSyncBtn) mobileForceSyncBtn.style.display = "flex";
 
             db.collection("users").doc(user.uid).onSnapshot(doc => {
                 if (doc.exists) {
@@ -57,10 +59,14 @@ if (isFirebaseConfigured) {
                     localStorage.setItem("kimcash_state", JSON.stringify(state));
                     updateAppView();
                 }
-            });
+            }, err => console.error("Error fetching data in real-time:", err));
         } else {
             if (overlay) overlay.style.display = "flex";
+            if (appContainer) appContainer.style.display = "none";
             if (logoutBtn) logoutBtn.style.display = "none";
+            if (forceSyncBtn) forceSyncBtn.style.display = "none";
+            if (mobileLogoutBtn) mobileLogoutBtn.style.display = "none";
+            if (mobileForceSyncBtn) mobileForceSyncBtn.style.display = "none";
         }
     });
 }
@@ -958,6 +964,14 @@ window.openEditInstallment = function (id) {
     }
 
     document.getElementById("modal-installment-monthly").value = inst.monthlyAmount;
+    
+    const interestRate = inst.interestRate || 0;
+    if (interestRate > 0) {
+        document.getElementById("installment-calc-info").textContent = `Installment: ฿${Number(inst.monthlyAmount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} for ${inst.totalMonths} Months (Rate: ${interestRate}%/month)`;
+    } else {
+        document.getElementById("installment-calc-info").textContent = `Equal average per installment of ฿${Number(inst.monthlyAmount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} for ${inst.totalMonths} Months (0% Interest)`;
+    }
+
     document.getElementById("modal-installment-start").value = inst.startMonth;
     document.getElementById("modal-installment-category").value = inst.category;
 
@@ -1009,22 +1023,41 @@ function setupEventListeners() {
     }
 
     if (logoutBtn) {
-        logoutBtn.addEventListener("click", (e) => {
-            e.preventDefault();
-            if (confirm("Sign out?")) {
-                auth.signOut().then(() => {
-                    showToast("Signed out", "success");
-                    state = {
-                        selectedMonth: state.selectedMonth,
-                        baseSalary: 0, incomes: [], expenses: [], installments: [], dcaList: [],
-                        welfareSettings: { pvdType: "percent", pvdValue: 3, ssoType: "auto", ssoValue: 750 },
-                        carryOverEnabled: true
-                    };
-                    updateAppView();
-                });
-            }
-        });
+        logoutBtn.addEventListener("click", handleLogout);
     }
+    
+    const mobileLogoutBtn = document.getElementById("mobile-logout");
+    if (mobileLogoutBtn) {
+        mobileLogoutBtn.addEventListener("click", handleLogout);
+    }
+
+    function handleLogout(e) {
+        e.preventDefault();
+        if (confirm("Sign out?")) {
+            auth.signOut().then(() => {
+                showToast("Signed out", "success");
+                state = {
+                    selectedMonth: state.selectedMonth,
+                    baseSalary: 0, incomes: [], expenses: [], installments: [], dcaList: [],
+                    welfareSettings: { pvdType: "percent", pvdValue: 3, ssoType: "auto", ssoValue: 750 },
+                    carryOverEnabled: true
+                };
+                updateAppView();
+            });
+        }
+    }
+
+    const forceSyncBtn = document.getElementById("menu-force-sync");
+    const mobileForceSyncBtn = document.getElementById("mobile-force-sync");
+    
+    function handleForceSync(e) {
+        e.preventDefault();
+        saveStateToLocalStorage();
+        showToast("Force synced data to cloud", "success");
+    }
+
+    if (forceSyncBtn) forceSyncBtn.addEventListener("click", handleForceSync);
+    if (mobileForceSyncBtn) mobileForceSyncBtn.addEventListener("click", handleForceSync);
 
     // Sidebar Navigation
     document.querySelectorAll(".sidebar-menu .menu-item").forEach(item => {
@@ -1149,6 +1182,7 @@ function setupEventListeners() {
         document.getElementById("modal-installment-id").value = "";
         document.getElementById("modal-installment-interest").value = "0";
         document.getElementById("modal-installment-start").value = state.selectedMonth;
+        document.getElementById("modal-installment-months-custom-group").classList.add("hidden");
         document.getElementById("installment-calc-info").textContent = "Equal average per installment (0% Interest)";
         document.getElementById("installment-modal-title").textContent = "Add Installment";
         openModal("modal-installment");
@@ -1221,8 +1255,8 @@ function setupEventListeners() {
             instCustomGrp.classList.remove("hidden");
         } else {
             instCustomGrp.classList.add("hidden");
-            calculateInstallmentMonthly();
         }
+        calculateInstallmentMonthly();
     });
 
     instTotalInput.addEventListener("input", calculateInstallmentMonthly);
