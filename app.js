@@ -982,23 +982,20 @@ function setupEventListeners() {
 
     if (emailAuthForm) {
         const btnLoginEmail = document.getElementById("btn-login-email");
-        const btnToggleRegister = document.getElementById("btn-toggle-register");
+        const authModeText = document.getElementById("btn-toggle-register").parentElement;
 
-        btnToggleRegister.addEventListener("click", (e) => {
-            e.preventDefault();
-            isLoginMode = !isLoginMode;
-            if (isLoginMode) {
-                btnLoginEmail.textContent = "Sign In";
-                btnToggleRegister.textContent = "Register here";
-                btnToggleRegister.parentElement.innerHTML = `No account? <a href="#" id="btn-toggle-register" style="color: var(--color-primary); font-weight: 500;">Register here</a>`;
-            } else {
-                btnLoginEmail.textContent = "Register";
-                btnToggleRegister.textContent = "Sign in here";
-                btnToggleRegister.parentElement.innerHTML = `Already have an account? <a href="#" id="btn-toggle-register" style="color: var(--color-primary); font-weight: 500;">Sign in here</a>`;
+        authModeText.addEventListener("click", (e) => {
+            if (e.target.id === "btn-toggle-register") {
+                e.preventDefault();
+                isLoginMode = !isLoginMode;
+                if (isLoginMode) {
+                    btnLoginEmail.textContent = "Sign In";
+                    authModeText.innerHTML = `No account? <a href="#" id="btn-toggle-register" style="color: var(--color-primary); font-weight: 500;">Register here</a>`;
+                } else {
+                    btnLoginEmail.textContent = "Register";
+                    authModeText.innerHTML = `Already have an account? <a href="#" id="btn-toggle-register" style="color: var(--color-primary); font-weight: 500;">Sign in here</a>`;
+                }
             }
-            
-            // Re-attach listener since we replaced innerHTML
-            document.getElementById("btn-toggle-register").addEventListener("click", arguments.callee);
         });
 
         emailAuthForm.addEventListener("submit", (e) => {
