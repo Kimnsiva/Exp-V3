@@ -390,9 +390,9 @@ function getMonthDiff(startMonthStr, targetMonthStr) {
 function calculateTimeline() {
     const monthsSet = new Set([state.selectedMonth]);
 
-    state.incomes.forEach(item => { if (item.date && item.type === "one-time") monthsSet.add(item.date.slice(0, 7)); });
-    state.expenses.forEach(item => { if (item.date && item.type === "one-time") monthsSet.add(item.date.slice(0, 7)); });
-    state.dcaList.forEach(item => { if (item.date && item.type === "one-time") monthsSet.add(item.date.slice(0, 7)); });
+    state.incomes.forEach(item => { if (item.date) monthsSet.add(item.date.slice(0, 7)); });
+    state.expenses.forEach(item => { if (item.date) monthsSet.add(item.date.slice(0, 7)); });
+    state.dcaList.forEach(item => { if (item.date) monthsSet.add(item.date.slice(0, 7)); });
     state.installments.forEach(item => {
         monthsSet.add(item.startMonth);
         const [startY, startM] = item.startMonth.split("-").map(Number);
@@ -431,7 +431,8 @@ function calculateTimeline() {
 
         state.incomes.forEach(inc => {
             const amt = Number(inc.amount);
-            if (inc.type === "recurring") {
+            const startMonth = inc.date ? inc.date.slice(0, 7) : "";
+            if (inc.type === "recurring" && month >= startMonth) {
                 grossIncome += amt;
                 recurringIncome += amt;
             } else if (inc.type === "one-time" && inc.date.slice(0, 7) === month) {
@@ -462,7 +463,8 @@ function calculateTimeline() {
         const activeDcaList = [];
         state.dcaList.forEach(dca => {
             const amt = Number(dca.amount);
-            if (dca.type === "recurring") {
+            const startMonth = dca.date ? dca.date.slice(0, 7) : "";
+            if (dca.type === "recurring" && month >= startMonth) {
                 totalDca += amt;
                 activeDcaList.push({ ...dca, computedAmount: amt });
             } else if (dca.type === "one-time" && dca.date.slice(0, 7) === month) {
@@ -481,7 +483,8 @@ function calculateTimeline() {
 
         state.expenses.forEach(exp => {
             const amt = Number(exp.amount);
-            if (exp.type === "recurring") {
+            const startMonth = exp.date ? exp.date.slice(0, 7) : "";
+            if (exp.type === "recurring" && month >= startMonth) {
                 generalExpenses += amt;
                 recurringExpense += amt;
                 activeExpensesList.push({ ...exp, computedAmount: amt });
@@ -788,7 +791,7 @@ function renderIncomeView(data) {
         row.innerHTML = `
             <td data-label="Item">${escapeHTML(inc.title)}</td>
             <td data-label="Type"><span class="badge ${badgeClass}">${badgeLabel}</span></td>
-            <td data-label="Date">${inc.type === "one-time" ? formatDate(inc.date) : "—"}</td>
+            <td data-label="Date">${inc.date ? formatDate(inc.date) : "—"}</td>
             <td data-label="Amount" class="text-right td-amount text-income">฿${Number(inc.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td data-label="Actions" class="text-center">
                 <button class="btn-action-icon btn-edit" onclick="openEditIncome('${inc.id}')" title="Edit">
@@ -869,7 +872,7 @@ function renderDeductionsView(data) {
             <td data-label="Item">${escapeHTML(dca.title)}</td>
             <td data-label="Category"><span class="badge badge-savings" style="background-color: rgba(139, 92, 246, 0.1)">${assetLabel}</span></td>
             <td data-label="Type"><span class="badge ${badgeClass}">${badgeLabel}</span></td>
-            <td data-label="Date">${dca.type === "one-time" ? formatDate(dca.date) : "—"}</td>
+            <td data-label="Date">${dca.date ? formatDate(dca.date) : "—"}</td>
             <td data-label="Amount" class="text-right td-amount text-savings">฿${Number(dca.computedAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td data-label="Actions" class="text-center">
                 <button class="btn-action-icon btn-edit" onclick="openEditDca('${dca.id}')" title="Edit">
@@ -923,7 +926,7 @@ function renderExpensesView(data) {
             <td data-label="Item">${escapeHTML(exp.title)}</td>
             <td data-label="Type"><span class="badge ${badgeClass}">${badgeLabel}</span></td>
             <td data-label="Category"><span class="badge badge-expense">${catLabel}</span></td>
-            <td data-label="Date">${exp.type === "one-time" ? formatDate(exp.date) : "—"}</td>
+            <td data-label="Date">${exp.date ? formatDate(exp.date) : "—"}</td>
             <td data-label="Amount" class="text-right td-amount text-danger">฿${Number(exp.computedAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td data-label="Actions" class="text-center">
                 <button class="btn-action-icon btn-edit" onclick="openEditExpense('${exp.id}')" title="Edit">
@@ -1595,43 +1598,7 @@ function setupEventListeners() {
         });
     });
 
-    // Date field toggles for recurring types
-    document.getElementById("modal-income-type").addEventListener("change", (e) => {
-        const dateGrp = document.getElementById("modal-income-date-group");
-        const dateInput = document.getElementById("modal-income-date");
-        if (e.target.value === "recurring") {
-            dateGrp.classList.add("hidden");
-            dateInput.removeAttribute("required");
-        } else {
-            dateGrp.classList.remove("hidden");
-            dateInput.setAttribute("required", "");
-        }
-    });
-
-    document.getElementById("modal-expense-type").addEventListener("change", (e) => {
-        const dateGrp = document.getElementById("modal-expense-date-group");
-        const dateInput = document.getElementById("modal-expense-date");
-        if (e.target.value === "recurring") {
-            dateGrp.classList.add("hidden");
-            dateInput.removeAttribute("required");
-        } else {
-            dateGrp.classList.remove("hidden");
-            dateInput.setAttribute("required", "");
-        }
-    });
-
-    document.getElementById("modal-dca-type").addEventListener("change", (e) => {
-        const dateGrp = document.getElementById("modal-dca-date-group");
-        const dateInput = document.getElementById("modal-dca-date");
-        if (e.target.value === "recurring") {
-            dateGrp.classList.add("hidden");
-            dateInput.removeAttribute("required");
-        } else {
-            dateGrp.classList.remove("hidden");
-            dateInput.setAttribute("required", "");
-        }
-    });
-
+    // Date field is always shown for both one-time and recurring items (to act as Start Date)
     // Installment calculations
     const instMonthsSel = document.getElementById("modal-installment-months");
     const instCustomGrp = document.getElementById("modal-installment-months-custom-group");
@@ -1689,7 +1656,7 @@ function setupEventListeners() {
         const type = document.getElementById("modal-income-type").value;
         const date = document.getElementById("modal-income-date").value;
 
-        saveIncomeFirebase({ id, title, amount, type, date: type === "recurring" ? "" : date });
+        saveIncomeFirebase({ id, title, amount, type, date });
         closeModal("modal-income");
         showToast("Income saved", "success");
     });
@@ -1703,7 +1670,7 @@ function setupEventListeners() {
         const category = document.getElementById("modal-expense-category").value;
         const date = document.getElementById("modal-expense-date").value;
 
-        saveExpenseFirebase({ id, title, amount, type, category, date: type === "recurring" ? "" : date });
+        saveExpenseFirebase({ id, title, amount, type, category, date });
         closeModal("modal-expense");
         showToast("Expense saved", "success");
     });
@@ -1717,7 +1684,7 @@ function setupEventListeners() {
         const type = document.getElementById("modal-dca-type").value;
         const date = document.getElementById("modal-dca-date").value;
 
-        saveDcaFirebase({ id, title, amount, category, type, date: type === "recurring" ? "" : date });
+        saveDcaFirebase({ id, title, amount, category, type, date });
         closeModal("modal-dca");
         showToast("DCA saved", "success");
     });
