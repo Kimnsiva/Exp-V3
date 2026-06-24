@@ -25,6 +25,13 @@
                 </div>
                 <div id="auth-error-msg" class="text-danger mb-4" style="display: none; text-align: center; font-size: 0.9rem;"></div>
                 
+                <!-- Auth Method Tabs -->
+                <div class="auth-tabs mb-4" style="display: flex; gap: 10px; justify-content: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                    <button id="tab-email" class="btn btn-sm" style="color: var(--color-primary); font-weight: bold; border-bottom: 2px solid var(--color-primary);">อีเมล</button>
+                    <button id="tab-phone" class="btn btn-sm" style="color: var(--text-muted); font-weight: bold;">เบอร์โทรศัพท์</button>
+                </div>
+
+                <!-- Email Form -->
                 <form id="auth-form">
                     <div class="form-group mb-4">
                         <label for="auth-email">อีเมล</label>
@@ -34,12 +41,36 @@
                         <label for="auth-password">รหัสผ่าน</label>
                         <input type="password" id="auth-password" placeholder="••••••••" required>
                     </div>
-                    
                     <button type="submit" class="btn btn-primary w-full mb-4" id="btn-login-submit">เข้าสู่ระบบ</button>
                     
-                    <div class="auth-footer text-center">
+                    <div class="auth-footer text-center" id="auth-register-footer">
                         <span class="text-muted" style="font-size: 0.9rem;">ยังไม่มีบัญชีใช่ไหม? </span>
                         <a href="#" id="btn-toggle-register" style="color: var(--color-primary); font-size: 0.9rem; text-decoration: none; font-weight: 500;">สมัครสมาชิก</a>
+                    </div>
+                </form>
+
+                <!-- Phone Form (Hidden initially) -->
+                <form id="phone-auth-form" style="display: none;">
+                    <div id="phone-input-section">
+                        <div class="form-group mb-4">
+                            <label for="auth-phone">เบอร์โทรศัพท์</label>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" value="+66" style="width: 60px; text-align: center; background: rgba(233, 237, 247, 0.4); border-radius: var(--border-radius-sm);" disabled>
+                                <input type="tel" id="auth-phone" placeholder="812345678 (ตัด 0 ตัวแรกออก)" required>
+                            </div>
+                            <small class="text-muted" style="font-size: 0.75rem; margin-top: 5px; display: block;">กรุณาพิมพ์หมายเลขโทรศัพท์ 9 หลัก (ไม่ต้องใส่ 0 ด้านหน้า)</small>
+                        </div>
+                        <div id="recaptcha-container" class="mb-4" style="display: flex; justify-content: center;"></div>
+                        <button type="submit" class="btn btn-primary w-full mb-4" id="btn-send-otp">ขอรหัส OTP</button>
+                    </div>
+
+                    <div id="otp-input-section" style="display: none;">
+                        <div class="form-group mb-6">
+                            <label for="auth-otp">รหัส OTP 6 หลัก</label>
+                            <input type="text" id="auth-otp" placeholder="123456">
+                        </div>
+                        <button type="button" class="btn btn-primary w-full mb-4" id="btn-verify-otp">ยืนยันรหัสผ่าน</button>
+                        <button type="button" class="btn w-full" id="btn-cancel-phone" style="background: transparent; color: var(--text-secondary);">ยกเลิก</button>
                     </div>
                 </form>
             </div>

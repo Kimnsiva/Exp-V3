@@ -1061,10 +1061,50 @@ function setupEventListeners() {
     // 0. Auth Listeners
     let isRegisterMode = false;
     const authForm = document.getElementById("auth-form");
+    const phoneAuthForm = document.getElementById("phone-auth-form");
     const toggleRegisterBtn = document.getElementById("btn-toggle-register");
     const authSubmitBtn = document.getElementById("btn-login-submit");
     const authErrorMsg = document.getElementById("auth-error-msg");
     const logoutBtn = document.getElementById("menu-logout");
+
+    // Tab Toggling
+    const tabEmail = document.getElementById("tab-email");
+    const tabPhone = document.getElementById("tab-phone");
+
+    if (tabEmail && tabPhone) {
+        tabEmail.addEventListener("click", (e) => {
+            e.preventDefault();
+            authForm.style.display = "block";
+            phoneAuthForm.style.display = "none";
+            tabEmail.style.color = "var(--color-primary)";
+            tabEmail.style.borderBottom = "2px solid var(--color-primary)";
+            tabPhone.style.color = "var(--text-muted)";
+            tabPhone.style.borderBottom = "none";
+            authErrorMsg.style.display = "none";
+        });
+
+        tabPhone.addEventListener("click", (e) => {
+            e.preventDefault();
+            authForm.style.display = "none";
+            phoneAuthForm.style.display = "block";
+            tabPhone.style.color = "var(--color-primary)";
+            tabPhone.style.borderBottom = "2px solid var(--color-primary)";
+            tabEmail.style.color = "var(--text-muted)";
+            tabEmail.style.borderBottom = "none";
+            authErrorMsg.style.display = "none";
+            
+            // Initialize Recaptcha if not already done
+            if (!window.recaptchaVerifier && isFirebaseConfigured) {
+                window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+                    'size': 'normal',
+                    'callback': (response) => {
+                        // reCAPTCHA solved, allow signInWithPhoneNumber.
+                    }
+                });
+                window.recaptchaVerifier.render();
+            }
+        });
+    }
 
     if (toggleRegisterBtn) {
         toggleRegisterBtn.addEventListener("click", (e) => {
@@ -1083,6 +1123,7 @@ function setupEventListeners() {
         });
     }
 
+    // Email/Password Form
     if (authForm) {
         authForm.addEventListener("submit", (e) => {
             e.preventDefault();
@@ -1097,7 +1138,6 @@ function setupEventListeners() {
                 auth.createUserWithEmailAndPassword(email, password)
                     .then(() => {
                         showToast("สมัครสมาชิกสำเร็จ", "success");
-                        // User will be auto logged in and onAuthStateChanged will hide the modal
                     })
                     .catch((error) => {
                         authErrorMsg.textContent = error.message;
@@ -1117,6 +1157,81 @@ function setupEventListeners() {
                         authSubmitBtn.textContent = "เข้าสู่ระบบ";
                     });
             }
+        });
+    }
+
+    // Phone Auth Logic
+    if (phoneAuthForm) {
+        const phoneInputSection = document.getElementById("phone-input-section");
+        const otpInputSection = document.getElementById("otp-input-section");
+        const btnSendOtp = document.getElementById("btn-send-otp");
+        const btnVerifyOtp = document.getElementById("btn-verify-otp");
+        const btnCancelPhone = document.getElementById("btn-cancel-phone");
+
+        // Send OTP
+        phoneAuthForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const phoneVal = document.getElementById("auth-phone").value.replace(/^0+/, ''); // Remove leading zeros
+            if (phoneVal.length < 8) {
+                authErrorMsg.textContent = "เบอร์โทรศัพท์ไม่ถูกต้อง";
+                authErrorMsg.style.display = "block";
+                return;
+            }
+            const phoneNumber = "+66" + phoneVal;
+            
+            btnSendOtp.disabled = true;
+            btnSendOtp.textContent = "กำลังส่ง SMS...";
+            authErrorMsg.style.display = "none";
+
+            auth.signInWithPhoneNumber(phoneNumber, window.recaptchaVerifier)
+                .then((confirmationResult) => {
+                    window.confirmationResult = confirmationResult;
+                    phoneInputSection.style.display = "none";
+                    otpInputSection.style.display = "block";
+                    showToast("ส่งรหัส OTP เรียบร้อยแล้ว", "success");
+                    btnSendOtp.disabled = false;
+                    btnSendOtp.textContent = "ขอรหัส OTP";
+                }).catch((error) => {
+                    authErrorMsg.textContent = error.message;
+                    authErrorMsg.style.display = "block";
+                    btnSendOtp.disabled = false;
+                    btnSendOtp.textContent = "ขอรหัส OTP";
+                    // Reset recaptcha
+                    if (window.recaptchaVerifier) window.recaptchaVerifier.render();
+                });
+        });
+
+        // Verify OTP
+        btnVerifyOtp.addEventListener("click", () => {
+            const code = document.getElementById("auth-otp").value;
+            btnVerifyOtp.disabled = true;
+            btnVerifyOtp.textContent = "กำลังตรวจสอบ...";
+            authErrorMsg.style.display = "none";
+
+            window.confirmationResult.confirm(code).then((result) => {
+                showToast("เข้าสู่ระบบด้วยเบอร์โทรสำเร็จ", "success");
+                // Auth state observer hides modal
+                // Reset form for next time
+                phoneInputSection.style.display = "block";
+                otpInputSection.style.display = "none";
+                document.getElementById("auth-phone").value = "";
+                document.getElementById("auth-otp").value = "";
+                btnVerifyOtp.disabled = false;
+                btnVerifyOtp.textContent = "ยืนยันรหัสผ่าน";
+            }).catch((error) => {
+                authErrorMsg.textContent = "รหัส OTP ไม่ถูกต้อง";
+                authErrorMsg.style.display = "block";
+                btnVerifyOtp.disabled = false;
+                btnVerifyOtp.textContent = "ยืนยันรหัสผ่าน";
+            });
+        });
+
+        btnCancelPhone.addEventListener("click", () => {
+            phoneInputSection.style.display = "block";
+            otpInputSection.style.display = "none";
+            document.getElementById("auth-otp").value = "";
+            authErrorMsg.style.display = "none";
+            if (window.recaptchaVerifier) window.recaptchaVerifier.render();
         });
     }
 
