@@ -327,7 +327,11 @@
                                     <input type="number" id="input-base-salary" min="0" required>
                                 </div>
                             </div>
-                            <button type="submit" class="btn btn-primary btn-auto-height">Save Salary</button>
+                            <div class="form-group flex-1">
+                                <label for="input-base-salary-start">Start Month</label>
+                                <input type="month" id="input-base-salary-start" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-auto-height" style="align-self: flex-end;">Save Salary</button>
                         </div>
                     </form>
                 </div>
@@ -697,7 +701,7 @@
                 </div>
 
                 <div class="form-group mb-4" id="modal-income-date-group">
-                    <label for="modal-income-date">Date Received <span class="required">*</span></label>
+                    <label for="modal-income-date">Date / Start Month <span class="required">*</span></label>
                     <input type="date" id="modal-income-date" required>
                 </div>
 
@@ -759,7 +763,7 @@
                     </div>
 
                     <div class="form-group flex-1" id="modal-expense-date-group">
-                        <label for="modal-expense-date">Date Spent <span class="required">*</span></label>
+                        <label for="modal-expense-date">Date / Start Month <span class="required">*</span></label>
                         <input type="date" id="modal-expense-date" required>
                     </div>
                 </div>
@@ -818,7 +822,7 @@
                     </div>
 
                     <div class="form-group flex-1" id="modal-dca-date-group">
-                        <label for="modal-dca-date">Date <span class="required">*</span></label>
+                        <label for="modal-dca-date">Date / Start Month <span class="required">*</span></label>
                         <input type="date" id="modal-dca-date" required>
                     </div>
                 </div>
@@ -878,6 +882,7 @@
                     <div class="form-group flex-1">
                         <label for="modal-installment-months">Installment Months <span class="required">*</span></label>
                         <select id="modal-installment-months">
+                            <option value="1">1 Month (Paid in full)</option>
                             <option value="3">3 Months</option>
                             <option value="4">4 Months</option>
                             <option value="6">6 Months</option>

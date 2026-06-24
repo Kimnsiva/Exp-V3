@@ -425,8 +425,11 @@ function calculateTimeline() {
     let carryOverBalance = 0;
 
     contiguousTimeline.forEach(month => {
-        let grossIncome = Number(state.baseSalary || 0);
-        let recurringIncome = Number(state.baseSalary || 0);
+        const baseSalStart = state.baseSalaryStartMonth || "";
+        const isBaseActive = month >= baseSalStart;
+
+        let grossIncome = isBaseActive ? Number(state.baseSalary || 0) : 0;
+        let recurringIncome = isBaseActive ? Number(state.baseSalary || 0) : 0;
         let oneTimeIncome = 0;
 
         state.incomes.forEach(inc => {
@@ -444,7 +447,7 @@ function calculateTimeline() {
         let pvdAmount = 0;
         let ssoAmount = 0;
 
-        if (state.baseSalary > 0) {
+        if (isBaseActive && state.baseSalary > 0) {
             const w = state.welfareSettings;
             if (w.pvdType === "percent") {
                 pvdAmount = state.baseSalary * (Number(w.pvdValue) / 100);
@@ -763,6 +766,7 @@ function renderDonutChart(data) {
 // ==================== VIEW 2: INCOMES ====================
 function renderIncomeView(data) {
     document.getElementById("input-base-salary").value = state.baseSalary || "";
+    document.getElementById("input-base-salary-start").value = state.baseSalaryStartMonth || state.selectedMonth;
 
     const tbody = document.getElementById("income-table-body");
     tbody.innerHTML = "";
@@ -772,7 +776,7 @@ function renderIncomeView(data) {
         row.innerHTML = `
             <td data-label="Item"><strong>Base Salary</strong></td>
             <td data-label="Type"><span class="badge badge-recurring">Recurring</span></td>
-            <td data-label="Date">—</td>
+            <td data-label="Date">${state.baseSalaryStartMonth ? formatDate(state.baseSalaryStartMonth + "-01").slice(3) : "—"}</td>
             <td data-label="Amount" class="text-right td-amount text-income">฿${state.baseSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td data-label="Actions" class="text-center"><span class="text-muted" style="font-size: 0.7rem;">Edit above</span></td>
         `;
@@ -1447,6 +1451,7 @@ function setupEventListeners() {
     document.getElementById("salary-form").addEventListener("submit", (e) => {
         e.preventDefault();
         state.baseSalary = Number(document.getElementById("input-base-salary").value);
+        state.baseSalaryStartMonth = document.getElementById("input-base-salary-start").value;
         saveStateToLocalStorage();
         updateAppView();
         showToast("Salary saved", "success");
