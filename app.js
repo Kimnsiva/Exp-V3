@@ -20,13 +20,12 @@ let state = {
 // ==================== FIREBASE CONFIGURATION ====================
 // TODO: นำ Firebase Config จาก Firebase Console มาวางใน Object นี้
 const firebaseConfig = {
-    // นำคอมเมนต์ออกแล้วใส่ข้อมูลจริงของคุณ
-    // apiKey: "AIzaSy...",
-    // authDomain: "your-project.firebaseapp.com",
-    // projectId: "your-project",
-    // storageBucket: "your-project.appspot.com",
-    // messagingSenderId: "123456789",
-    // appId: "1:123456:web:123abc456def"
+    apiKey: "AIzaSyDstD06DHxVK3JS0dTlz3qxVDgQfjFhaeI",
+    authDomain: "kimcash-km.firebaseapp.com",
+    projectId: "kimcash-km",
+    storageBucket: "kimcash-km.firebasestorage.app",
+    messagingSenderId: "405838515046",
+    appId: "1:405838515046:web:227f6eddecf78d5236d6a7"
 };
 
 // ตรวจสอบว่าได้ตั้งค่า Firebase หรือยัง
@@ -38,7 +37,7 @@ if (isFirebaseConfigured) {
     firebase.initializeApp(firebaseConfig);
     db = firebase.firestore();
     auth = firebase.auth();
-    
+
     // เข้าสู่ระบบแบบไม่ระบุตัวตน (Anonymous) ไปก่อน เพื่อให้ Security Rules ตรวจสอบ User ID ได้
     // (หากต้องการทำระบบ Login ด้วย Email/Google ในอนาคต ค่อยเปลี่ยนส่วนนี้)
     auth.signInAnonymously().catch((error) => {
@@ -85,7 +84,7 @@ function initDefaultState() {
 // ==================== STORAGE OPERATIONS ====================
 function saveStateToLocalStorage() {
     localStorage.setItem("fintrack_state", JSON.stringify(state));
-    
+
     // หากเชื่อมต่อ Firebase ไว้ ให้บันทึกข้อมูลขึ้น Cloud ด้วย
     if (isFirebaseConfigured && db && auth && auth.currentUser) {
         db.collection("users").doc(auth.currentUser.uid).set(state)
@@ -105,7 +104,7 @@ function loadStateFromLocalStorage() {
             showToast("ไม่สามารถโหลดข้อมูลเดิมได้ ข้อมูลได้รับความเสียหาย", "error");
         }
     }
-    
+
     // หากเชื่อมต่อ Firebase ให้ซิงค์ข้อมูลจาก Cloud มาทับ
     if (isFirebaseConfigured && auth) {
         auth.onAuthStateChanged((user) => {
@@ -118,7 +117,7 @@ function loadStateFromLocalStorage() {
                         updateAppView(); // รีเฟรชหน้าจอใหม่
                     }
                 }).catch(err => console.error("Error loading from Firebase:", err));
-                
+
                 // ฟังการเปลี่ยนแปลงข้อมูลแบบ Real-time
                 db.collection("users").doc(user.uid).onSnapshot(doc => {
                     if (doc.exists) {
@@ -145,7 +144,7 @@ function getMonthDiff(startMonthStr, targetMonthStr) {
 function calculateTimeline() {
     // 1. Gather all months that contain data to find the earliest
     const monthsSet = new Set([state.selectedMonth]);
-    
+
     state.incomes.forEach(item => { if (item.date && item.type === "one-time") monthsSet.add(item.date.slice(0, 7)); });
     state.expenses.forEach(item => { if (item.date && item.type === "one-time") monthsSet.add(item.date.slice(0, 7)); });
     state.dcaList.forEach(item => { if (item.date && item.type === "one-time") monthsSet.add(item.date.slice(0, 7)); });
@@ -163,14 +162,14 @@ function calculateTimeline() {
     });
 
     const uniqueMonths = Array.from(monthsSet).sort();
-    
+
     // Ensure contiguous list from earliest month up to selected month
     const earliestMonth = uniqueMonths[0];
     const targetMonth = state.selectedMonth;
-    
+
     const contiguousTimeline = [];
     let current = earliestMonth;
-    
+
     while (current <= targetMonth) {
         contiguousTimeline.push(current);
         // Advance current by 1 month
@@ -192,7 +191,7 @@ function calculateTimeline() {
         let grossIncome = Number(state.baseSalary || 0); // salary is recurring
         let recurringIncome = Number(state.baseSalary || 0);
         let oneTimeIncome = 0;
-        
+
         state.incomes.forEach(inc => {
             const amt = Number(inc.amount);
             if (inc.type === "recurring") {
@@ -207,7 +206,7 @@ function calculateTimeline() {
         // B. Welfare Deductions (Only if base salary exists)
         let pvdAmount = 0;
         let ssoAmount = 0;
-        
+
         if (state.baseSalary > 0) {
             const w = state.welfareSettings;
             if (w.pvdType === "percent") {
@@ -215,7 +214,7 @@ function calculateTimeline() {
             } else {
                 pvdAmount = Number(w.pvdValue);
             }
-            
+
             if (w.ssoType === "auto") {
                 ssoAmount = Math.min(state.baseSalary * 0.05, 750);
             } else {
@@ -370,7 +369,7 @@ function renderSummaryCards(data) {
 
     // 2. Gross Income
     document.getElementById("card-income-value").textContent = formatCurrency(data.grossIncome);
-    document.getElementById("card-income-recurring-ratio").textContent = 
+    document.getElementById("card-income-recurring-ratio").textContent =
         `เงินเดือนRecurring: ${formatCurrency(state.baseSalary)} | Others: ${formatCurrency(data.oneTimeIncome)}`;
 
     // 3. Deductions & DCA
@@ -379,7 +378,7 @@ function renderSummaryCards(data) {
 
     // 4. Expenses & Installments
     document.getElementById("card-expense-value").textContent = formatCurrency(data.totalExpenses);
-    document.getElementById("card-installment-ratio").textContent = 
+    document.getElementById("card-installment-ratio").textContent =
         `จ่ายสด: ${formatCurrency(data.generalExpenses)} | ผ่อนบัตร: ${formatCurrency(data.installmentExpenses)}`;
 
     // 5. Net Balance
@@ -407,7 +406,7 @@ function renderDashboardDetails(data) {
     const expenseRatio = data.disposableIncome > 0 ? (data.totalExpenses / data.disposableIncome) * 100 : 0;
     document.getElementById("metric-expense-ratio-val").textContent = `${expenseRatio.toFixed(1)}%`;
     document.getElementById("metric-expense-ratio-bar").style.width = `${Math.min(expenseRatio, 100)}%`;
-    
+
     // Set color indicators based on ratio levels
     const expenseRatioBar = document.getElementById("metric-expense-ratio-bar");
     if (expenseRatio > 90) {
@@ -473,7 +472,7 @@ function createQuickLi(name, typeText, val, textClass) {
             <span class="quick-item-name">${name}</span>
             <span class="quick-item-meta">${typeText}</span>
         </div>
-        <span class="quick-item-val ${textClass}">฿${Number(val).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+        <span class="quick-item-val ${textClass}">฿${Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
     `;
     return li;
 }
@@ -482,7 +481,7 @@ function createQuickLi(name, typeText, val, textClass) {
 function renderDonutChart(data) {
     const segmentsContainer = document.getElementById("donut-segments");
     const legendContainer = document.getElementById("chart-legend-container");
-    
+
     segmentsContainer.innerHTML = "";
     legendContainer.innerHTML = "";
 
@@ -501,7 +500,7 @@ function renderDonutChart(data) {
         total += data.installmentExpenses;
     }
 
-    document.getElementById("chart-center-expense").textContent = `฿${total.toLocaleString(undefined, {maximumFractionDigits: 0})}`;
+    document.getElementById("chart-center-expense").textContent = `฿${total.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
     if (total === 0) {
         segmentsContainer.innerHTML = `<circle cx="100" cy="100" r="70" class="chart-bg" />`;
@@ -528,7 +527,7 @@ function renderDonutChart(data) {
     items.forEach(item => {
         const dashArrayVal = (item.percentage / 100) * circumference;
         const dashOffsetVal = circumference - dashArrayVal + (accumulatedPercent / 100) * circumference;
-        
+
         const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
         circle.setAttribute("cx", "100");
         circle.setAttribute("cy", "100");
@@ -549,7 +548,7 @@ function renderDonutChart(data) {
                 <span class="legend-dot" style="background-color: ${item.style.color}"></span>
                 <span class="legend-label">${item.style.label} <span class="legend-percent">${item.percentage.toFixed(1)}%</span></span>
             </div>
-            <span class="legend-val">฿${item.amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            <span class="legend-val">฿${item.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         `;
         legendContainer.appendChild(legendDiv);
     });
@@ -569,7 +568,7 @@ function renderIncomeView(data) {
             <td><strong>เงินเดือนRecurring (Base Salary)</strong></td>
             <td><span class="badge badge-recurring">Recurringทุกเดือน</span></td>
             <td>-</td>
-            <td class="text-right td-amount text-income">฿${state.baseSalary.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td class="text-right td-amount text-income">฿${state.baseSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td class="text-center"><span class="text-muted" style="font-size: 0.8rem;">แก้ไขที่ฟอร์มด้านบน</span></td>
         `;
         tbody.appendChild(row);
@@ -584,12 +583,12 @@ function renderIncomeView(data) {
         const row = document.createElement("tr");
         const badgeClass = inc.type === "recurring" ? "badge-recurring" : "badge-one-time";
         const badgeLabel = inc.type === "recurring" ? "Recurringทุกเดือน" : "This Month Only";
-        
+
         row.innerHTML = `
             <td>${escapeHTML(inc.title)}</td>
             <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
             <td>${inc.type === "one-time" ? formatDateThai(inc.date) : "-"}</td>
-            <td class="text-right td-amount text-income">฿${Number(inc.amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td class="text-right td-amount text-income">฿${Number(inc.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td class="text-center">
                 <button class="btn-action-icon btn-edit" onclick="openEditIncome('${inc.id}')" title="แก้ไข">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -617,20 +616,20 @@ function renderIncomeView(data) {
 function renderDeductionsView(data) {
     // 1. Setup welfares config fields
     const w = state.welfareSettings;
-    
+
     // Provident Fund PVD
     document.getElementById("pvd-type-percent").checked = w.pvdType === "percent";
     document.getElementById("pvd-type-fixed").checked = w.pvdType === "fixed";
     document.getElementById("pvd-percent-input").value = w.pvdValue && w.pvdType === "percent" ? w.pvdValue : 3;
     document.getElementById("pvd-fixed-input").value = w.pvdValue && w.pvdType === "fixed" ? w.pvdValue : 0;
-    
+
     togglePvdInputGroup(w.pvdType);
 
     // Social Security SSO
     document.getElementById("sso-type-auto").checked = w.ssoType === "auto";
     document.getElementById("sso-type-fixed").checked = w.ssoType === "fixed";
     document.getElementById("sso-fixed-input").value = w.ssoValue;
-    
+
     toggleSsoInputGroup(w.ssoType);
 
     // 2. Render Deductions + DCA Table
@@ -645,7 +644,7 @@ function renderDeductionsView(data) {
             <td><span class="badge badge-savings">สวัสดิการพนักงาน</span></td>
             <td><span class="badge badge-recurring">Recurringทุกเดือน</span></td>
             <td>-</td>
-            <td class="text-right td-amount text-savings">฿${data.pvd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td class="text-right td-amount text-savings">฿${data.pvd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td class="text-center"><span class="text-muted" style="font-size: 0.8rem;">แก้ไขสวัสดิการด้านบน</span></td>
         `;
         tbody.appendChild(row);
@@ -659,7 +658,7 @@ function renderDeductionsView(data) {
             <td><span class="badge badge-savings">สวัสดิการพนักงาน</span></td>
             <td><span class="badge badge-recurring">Recurringทุกเดือน</span></td>
             <td>-</td>
-            <td class="text-right td-amount text-savings">฿${data.sso.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td class="text-right td-amount text-savings">฿${data.sso.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td class="text-center"><span class="text-muted" style="font-size: 0.8rem;">แก้ไขสวัสดิการด้านบน</span></td>
         `;
         tbody.appendChild(row);
@@ -677,7 +676,7 @@ function renderDeductionsView(data) {
             <td><span class="badge badge-savings" style="background-color: rgba(139, 92, 246, 0.15)">${assetLabel}</span></td>
             <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
             <td>${dca.type === "one-time" ? formatDateThai(dca.date) : "-"}</td>
-            <td class="text-right td-amount text-savings">฿${Number(dca.computedAmount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td class="text-right td-amount text-savings">฿${Number(dca.computedAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td class="text-center">
                 <button class="btn-action-icon btn-edit" onclick="openEditDca('${dca.id}')" title="แก้ไข">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -715,7 +714,7 @@ function renderExpensesView(data) {
             <td><span class="badge badge-recurring">Installment ${inst.currentInstallmentIndex}/${inst.totalMonths}</span></td>
             <td><span class="badge badge-credit">${assetLabel}</span></td>
             <td>-</td>
-            <td class="text-right td-amount text-danger">฿${Number(inst.computedAmount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td class="text-right td-amount text-danger">฿${Number(inst.computedAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td class="text-center"><span class="text-muted" style="font-size: 0.8rem;">Actions in Installments Menu</span></td>
         `;
         tbody.appendChild(row);
@@ -733,7 +732,7 @@ function renderExpensesView(data) {
             <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
             <td><span class="badge badge-expense">${catLabel}</span></td>
             <td>${exp.type === "one-time" ? formatDateThai(exp.date) : "-"}</td>
-            <td class="text-right td-amount text-danger">฿${Number(exp.computedAmount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td class="text-right td-amount text-danger">฿${Number(exp.computedAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td class="text-center">
                 <button class="btn-action-icon btn-edit" onclick="openEditExpense('${exp.id}')" title="Edit">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -764,11 +763,11 @@ function renderInstallmentsView(data) {
 
     state.installments.forEach(inst => {
         const row = document.createElement("tr");
-        
+
         // Check current state for this installment in the selected month
         const diff = getMonthDiff(inst.startMonth, state.selectedMonth);
         let statusBadge = "";
-        
+
         if (diff < 0) {
             statusBadge = `<span class="badge" style="background-color: rgba(245, 158, 11, 0.1); color: var(--color-warning);">Not started (First installment ${formatMonthYearThai(inst.startMonth)})</span>`;
         } else if (diff >= inst.totalMonths) {
@@ -785,8 +784,8 @@ function renderInstallmentsView(data) {
                 <span class="quick-item-meta">${catLabel}</span>
             </td>
             <td><span class="badge badge-credit">${catLabel}</span></td>
-            <td class="td-amount">฿${Number(inst.totalAmount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-            <td class="td-amount text-danger">฿${Number(inst.monthlyAmount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td class="td-amount">฿${Number(inst.totalAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td class="td-amount text-danger">฿${Number(inst.monthlyAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td>${inst.totalMonths} Months</td>
             <td>${formatMonthYearThai(inst.startMonth)}</td>
             <td>${statusBadge}</td>
@@ -838,7 +837,7 @@ function switchView(viewId) {
     // 3. Update Titles & Subtitles
     const titleEl = document.getElementById("current-view-title");
     const subEl = document.getElementById("current-view-subtitle");
-    
+
     switch (viewId) {
         case "dashboard":
             titleEl.textContent = "Dashboard";
@@ -873,9 +872,9 @@ function showToast(message, type = "success") {
     const toast = document.createElement("div");
     toast.className = `toast toast-${type}`;
     toast.textContent = message;
-    
+
     container.appendChild(toast);
-    
+
     // Auto remove after 3s
     setTimeout(() => {
         toast.style.animation = "slideInRight var(--transition-fast) reverse";
@@ -918,7 +917,7 @@ function toggleSsoInputGroup(type) {
 }
 
 // Form Handlers & Modal Editing
-window.openEditIncome = function(id) {
+window.openEditIncome = function (id) {
     const inc = state.incomes.find(i => i.id === id);
     if (!inc) return;
 
@@ -926,7 +925,7 @@ window.openEditIncome = function(id) {
     document.getElementById("modal-income-title").value = inc.title;
     document.getElementById("modal-income-amount").value = inc.amount;
     document.getElementById("modal-income-type").value = inc.type;
-    
+
     const dateGroup = document.getElementById("modal-income-date-group");
     if (inc.type === "recurring") {
         dateGroup.classList.add("hidden");
@@ -941,7 +940,7 @@ window.openEditIncome = function(id) {
     openModal("modal-income");
 };
 
-window.deleteIncome = function(id) {
+window.deleteIncome = function (id) {
     if (confirm("Are you sure you want to delete this income item?")) {
         state.incomes = state.incomes.filter(i => i.id !== id);
         saveStateToLocalStorage();
@@ -950,7 +949,7 @@ window.deleteIncome = function(id) {
     }
 };
 
-window.openEditDca = function(id) {
+window.openEditDca = function (id) {
     const dca = state.dcaList.find(d => d.id === id);
     if (!dca) return;
 
@@ -974,7 +973,7 @@ window.openEditDca = function(id) {
     openModal("modal-dca");
 };
 
-window.deleteDca = function(id) {
+window.deleteDca = function (id) {
     if (confirm("Are you sure you want to delete this DCA item?")) {
         state.dcaList = state.dcaList.filter(d => d.id !== id);
         saveStateToLocalStorage();
@@ -983,7 +982,7 @@ window.deleteDca = function(id) {
     }
 };
 
-window.openEditExpense = function(id) {
+window.openEditExpense = function (id) {
     const exp = state.expenses.find(e => e.id === id);
     if (!exp) return;
 
@@ -1007,7 +1006,7 @@ window.openEditExpense = function(id) {
     openModal("modal-expense");
 };
 
-window.deleteExpense = function(id) {
+window.deleteExpense = function (id) {
     if (confirm("Are you sure you want to delete this expense?")) {
         state.expenses = state.expenses.filter(e => e.id !== id);
         saveStateToLocalStorage();
@@ -1016,7 +1015,7 @@ window.deleteExpense = function(id) {
     }
 };
 
-window.openEditInstallment = function(id) {
+window.openEditInstallment = function (id) {
     const inst = state.installments.find(i => i.id === id);
     if (!inst) return;
 
@@ -1024,7 +1023,7 @@ window.openEditInstallment = function(id) {
     document.getElementById("modal-installment-title").value = inst.title;
     document.getElementById("modal-installment-total-amount").value = inst.totalAmount;
     document.getElementById("modal-installment-interest").value = inst.interestRate || 0;
-    
+
     const monthsSelect = document.getElementById("modal-installment-months");
     const allowedMonths = ["3", "4", "6", "10", "12", "18", "24", "36"];
     if (allowedMonths.includes(String(inst.totalMonths))) {
@@ -1044,7 +1043,7 @@ window.openEditInstallment = function(id) {
     openModal("modal-installment");
 };
 
-window.deleteInstallment = function(id) {
+window.deleteInstallment = function (id) {
     if (confirm("Are you sure you want to delete this installment plan? (Related monthly deductions will also be removed)")) {
         state.installments = state.installments.filter(i => i.id !== id);
         saveStateToLocalStorage();
@@ -1102,10 +1101,10 @@ function setupEventListeners() {
     // 4. Welfare Settings Save
     document.getElementById("btn-save-welfare").addEventListener("click", () => {
         const isPercent = document.getElementById("pvd-type-percent").checked;
-        const pvdVal = isPercent 
+        const pvdVal = isPercent
             ? Number(document.getElementById("pvd-percent-input").value)
             : Number(document.getElementById("pvd-fixed-input").value);
-            
+
         const isSsoAuto = document.getElementById("sso-type-auto").checked;
         const ssoVal = isSsoAuto ? 750 : Number(document.getElementById("sso-fixed-input").value);
 
@@ -1142,14 +1141,14 @@ function setupEventListeners() {
         document.getElementById("income-modal-form").reset();
         document.getElementById("modal-income-id").value = "";
         document.getElementById("income-modal-title").textContent = "Add Additional Income";
-        
+
         // Auto fill date with first day of selectedMonth or current day
         const today = new Date();
         const dateInput = document.getElementById("modal-income-date");
         dateInput.value = `${state.selectedMonth}-${String(today.getDate()).padStart(2, '0')}`;
         document.getElementById("modal-income-date-group").classList.remove("hidden");
         dateInput.setAttribute("required", "");
-        
+
         openModal("modal-income");
     });
 
@@ -1157,7 +1156,7 @@ function setupEventListeners() {
         document.getElementById("expense-modal-form").reset();
         document.getElementById("modal-expense-id").value = "";
         document.getElementById("expense-modal-title").textContent = "Save General Expense";
-        
+
         const today = new Date();
         const dateInput = document.getElementById("modal-expense-date");
         dateInput.value = `${state.selectedMonth}-${String(today.getDate()).padStart(2, '0')}`;
@@ -1171,7 +1170,7 @@ function setupEventListeners() {
         document.getElementById("dca-modal-form").reset();
         document.getElementById("modal-dca-id").value = "";
         document.getElementById("dca-modal-title").textContent = "Save DCA Item";
-        
+
         const today = new Date();
         const dateInput = document.getElementById("modal-dca-date");
         dateInput.value = `${state.selectedMonth}-${String(today.getDate()).padStart(2, '0')}`;
@@ -1194,10 +1193,10 @@ function setupEventListeners() {
     // 7. Modals close buttons
     document.getElementById("btn-close-income-modal").addEventListener("click", () => closeModal("modal-income"));
     document.getElementById("btn-cancel-income-modal").addEventListener("click", () => closeModal("modal-income"));
-    
+
     document.getElementById("btn-close-expense-modal").addEventListener("click", () => closeModal("modal-expense"));
     document.getElementById("btn-cancel-expense-modal").addEventListener("click", () => closeModal("modal-expense"));
-    
+
     document.getElementById("btn-close-dca-modal").addEventListener("click", () => closeModal("modal-dca"));
     document.getElementById("btn-cancel-dca-modal").addEventListener("click", () => closeModal("modal-dca"));
 
@@ -1253,7 +1252,7 @@ function setupEventListeners() {
     const instCustomGrp = document.getElementById("modal-installment-months-custom-group");
     const instTotalInput = document.getElementById("modal-installment-total-amount");
     const instMonthlyInput = document.getElementById("modal-installment-monthly");
-    
+
     instMonthsSel.addEventListener("change", (e) => {
         if (e.target.value === "custom") {
             instCustomGrp.classList.remove("hidden");
@@ -1275,23 +1274,23 @@ function setupEventListeners() {
         } else {
             months = Number(instMonthsSel.value);
         }
-        
+
         const interestRate = Number(document.getElementById("modal-installment-interest").value) || 0;
-        
+
         if (total > 0 && months > 0) {
             let grandTotal = total;
             if (interestRate > 0) {
                 const totalInterest = total * (interestRate / 100) * months;
                 grandTotal = total + totalInterest;
             }
-            
+
             const monthly = grandTotal / months;
             instMonthlyInput.value = monthly.toFixed(2);
-            
+
             if (interestRate > 0) {
-                document.getElementById("installment-calc-info").textContent = `Installment: ฿${monthly.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} for ${months} Months (Rate: ${interestRate}%/month)`;
+                document.getElementById("installment-calc-info").textContent = `Installment: ฿${monthly.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} for ${months} Months (Rate: ${interestRate}%/month)`;
             } else {
-                document.getElementById("installment-calc-info").textContent = `Equal average per installment of ฿${monthly.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} for ${months} Months (0% Interest)`;
+                document.getElementById("installment-calc-info").textContent = `Equal average per installment of ฿${monthly.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} for ${months} Months (0% Interest)`;
             }
         }
     }
@@ -1406,7 +1405,7 @@ function setupEventListeners() {
         const monthlyAmount = Number(document.getElementById("modal-installment-monthly").value);
         const startMonth = document.getElementById("modal-installment-start").value;
         const category = document.getElementById("modal-installment-category").value;
-        
+
         let totalMonths = 10;
         if (instMonthsSel.value === "custom") {
             totalMonths = Number(document.getElementById("modal-installment-months-custom").value);
@@ -1440,12 +1439,12 @@ function setupEventListeners() {
 
     // 8. Settings View Backup Buttons
     document.getElementById("btn-export-data").addEventListener("click", exportDataJSON);
-    
+
     // File upload triggers
     const triggerFileBtn = document.getElementById("btn-trigger-file");
     const fileInput = document.getElementById("file-import-input");
     triggerFileBtn.addEventListener("click", () => fileInput.click());
-    
+
     fileInput.addEventListener("change", (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -1480,32 +1479,32 @@ function exportDataJSON() {
     const dataStr = JSON.stringify(state, null, 4);
     const blob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    
+
     const a = document.createElement("a");
     a.href = url;
     a.download = `fintrack_backup_${state.selectedMonth}.json`;
     document.body.appendChild(a);
     a.click();
-    
+
     setTimeout(() => {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     }, 0);
-    
+
     showToast("Backup file exported successfully");
 }
 
 function importDataJSON(file) {
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = function (e) {
         try {
             const parsed = JSON.parse(e.target.result);
-            
+
             // Check essential structures to validate backup structure
             if (
-                parsed.hasOwnProperty("baseSalary") && 
-                parsed.hasOwnProperty("incomes") && 
-                parsed.hasOwnProperty("expenses") && 
+                parsed.hasOwnProperty("baseSalary") &&
+                parsed.hasOwnProperty("incomes") &&
+                parsed.hasOwnProperty("expenses") &&
                 parsed.hasOwnProperty("installments")
             ) {
                 state = { ...state, ...parsed };
@@ -1529,7 +1528,7 @@ function generateId() {
 }
 
 function formatCurrency(num) {
-    return `฿${Number(num).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    return `฿${Number(num).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function formatDateThai(dateStr) {
