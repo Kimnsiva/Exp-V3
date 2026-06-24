@@ -508,11 +508,11 @@ function renderIncomeView(data) {
     if (state.baseSalary > 0) {
         const row = document.createElement("tr");
         row.innerHTML = `
-            <td><strong>Base Salary</strong></td>
-            <td><span class="badge badge-recurring">Recurring</span></td>
-            <td>—</td>
-            <td class="text-right td-amount text-income">฿${state.baseSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-            <td class="text-center"><span class="text-muted" style="font-size: 0.7rem;">Edit above</span></td>
+            <td data-label="Item"><strong>Base Salary</strong></td>
+            <td data-label="Type"><span class="badge badge-recurring">Recurring</span></td>
+            <td data-label="Date">—</td>
+            <td data-label="Amount" class="text-right td-amount text-income">฿${state.baseSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td data-label="Actions" class="text-center"><span class="text-muted" style="font-size: 0.7rem;">Edit above</span></td>
         `;
         tbody.appendChild(row);
     }
@@ -527,11 +527,11 @@ function renderIncomeView(data) {
         const badgeLabel = inc.type === "recurring" ? "Recurring" : "One-time";
 
         row.innerHTML = `
-            <td>${escapeHTML(inc.title)}</td>
-            <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
-            <td>${inc.type === "one-time" ? formatDate(inc.date) : "—"}</td>
-            <td class="text-right td-amount text-income">฿${Number(inc.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-            <td class="text-center">
+            <td data-label="Item">${escapeHTML(inc.title)}</td>
+            <td data-label="Type"><span class="badge ${badgeClass}">${badgeLabel}</span></td>
+            <td data-label="Date">${inc.type === "one-time" ? formatDate(inc.date) : "—"}</td>
+            <td data-label="Amount" class="text-right td-amount text-income">฿${Number(inc.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td data-label="Actions" class="text-center">
                 <button class="btn-action-icon btn-edit" onclick="openEditIncome('${inc.id}')" title="Edit">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -577,12 +577,12 @@ function renderDeductionsView(data) {
     if (data.pvd > 0) {
         const row = document.createElement("tr");
         row.innerHTML = `
-            <td><strong>Provident Fund (PVD)</strong></td>
-            <td><span class="badge badge-savings">Welfare</span></td>
-            <td><span class="badge badge-recurring">Recurring</span></td>
-            <td>—</td>
-            <td class="text-right td-amount text-savings">฿${data.pvd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-            <td class="text-center"><span class="text-muted" style="font-size: 0.7rem;">Edit above</span></td>
+            <td data-label="Item"><strong>Provident Fund (PVD)</strong></td>
+            <td data-label="Category"><span class="badge badge-savings">Welfare</span></td>
+            <td data-label="Type"><span class="badge badge-recurring">Recurring</span></td>
+            <td data-label="Date">—</td>
+            <td data-label="Amount" class="text-right td-amount text-savings">฿${data.pvd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td data-label="Actions" class="text-center"><span class="text-muted" style="font-size: 0.7rem;">Edit above</span></td>
         `;
         tbody.appendChild(row);
     }
@@ -590,12 +590,12 @@ function renderDeductionsView(data) {
     if (data.sso > 0) {
         const row = document.createElement("tr");
         row.innerHTML = `
-            <td><strong>Social Security (SSO)</strong></td>
-            <td><span class="badge badge-savings">Welfare</span></td>
-            <td><span class="badge badge-recurring">Recurring</span></td>
-            <td>—</td>
-            <td class="text-right td-amount text-savings">฿${data.sso.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-            <td class="text-center"><span class="text-muted" style="font-size: 0.7rem;">Edit above</span></td>
+            <td data-label="Item"><strong>Social Security (SSO)</strong></td>
+            <td data-label="Category"><span class="badge badge-savings">Welfare</span></td>
+            <td data-label="Type"><span class="badge badge-recurring">Recurring</span></td>
+            <td data-label="Date">—</td>
+            <td data-label="Amount" class="text-right td-amount text-savings">฿${data.sso.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td data-label="Actions" class="text-center"><span class="text-muted" style="font-size: 0.7rem;">Edit above</span></td>
         `;
         tbody.appendChild(row);
     }
@@ -607,12 +607,12 @@ function renderDeductionsView(data) {
         const assetLabel = categoryStyles[dca.category]?.label || "Investment";
 
         row.innerHTML = `
-            <td>${escapeHTML(dca.title)}</td>
-            <td><span class="badge badge-savings" style="background-color: rgba(139, 92, 246, 0.1)">${assetLabel}</span></td>
-            <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
-            <td>${dca.type === "one-time" ? formatDate(dca.date) : "—"}</td>
-            <td class="text-right td-amount text-savings">฿${Number(dca.computedAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-            <td class="text-center">
+            <td data-label="Item">${escapeHTML(dca.title)}</td>
+            <td data-label="Category"><span class="badge badge-savings" style="background-color: rgba(139, 92, 246, 0.1)">${assetLabel}</span></td>
+            <td data-label="Type"><span class="badge ${badgeClass}">${badgeLabel}</span></td>
+            <td data-label="Date">${dca.type === "one-time" ? formatDate(dca.date) : "—"}</td>
+            <td data-label="Amount" class="text-right td-amount text-savings">฿${Number(dca.computedAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td data-label="Actions" class="text-center">
                 <button class="btn-action-icon btn-edit" onclick="openEditDca('${dca.id}')" title="Edit">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -644,12 +644,12 @@ function renderExpensesView(data) {
         const row = document.createElement("tr");
         const assetLabel = categoryStyles[inst.category]?.label || "Others";
         row.innerHTML = `
-            <td><strong>[Installment] ${escapeHTML(inst.title)}</strong></td>
-            <td><span class="badge badge-recurring">Installment ${inst.currentInstallmentIndex}/${inst.totalMonths}</span></td>
-            <td><span class="badge badge-credit">${assetLabel}</span></td>
-            <td>—</td>
-            <td class="text-right td-amount text-danger">฿${Number(inst.computedAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-            <td class="text-center"><span class="text-muted" style="font-size: 0.7rem;">Manage in Installments</span></td>
+            <td data-label="Item"><strong>[Installment] ${escapeHTML(inst.title)}</strong></td>
+            <td data-label="Type"><span class="badge badge-recurring">Installment ${inst.currentInstallmentIndex}/${inst.totalMonths}</span></td>
+            <td data-label="Category"><span class="badge badge-credit">${assetLabel}</span></td>
+            <td data-label="Date">—</td>
+            <td data-label="Amount" class="text-right td-amount text-danger">฿${Number(inst.computedAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td data-label="Actions" class="text-center"><span class="text-muted" style="font-size: 0.7rem;">Manage in Installments</span></td>
         `;
         tbody.appendChild(row);
     });
@@ -661,12 +661,12 @@ function renderExpensesView(data) {
         const catLabel = categoryStyles[exp.category]?.label || "Others";
 
         row.innerHTML = `
-            <td>${escapeHTML(exp.title)}</td>
-            <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
-            <td><span class="badge badge-expense">${catLabel}</span></td>
-            <td>${exp.type === "one-time" ? formatDate(exp.date) : "—"}</td>
-            <td class="text-right td-amount text-danger">฿${Number(exp.computedAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-            <td class="text-center">
+            <td data-label="Item">${escapeHTML(exp.title)}</td>
+            <td data-label="Type"><span class="badge ${badgeClass}">${badgeLabel}</span></td>
+            <td data-label="Category"><span class="badge badge-expense">${catLabel}</span></td>
+            <td data-label="Date">${exp.type === "one-time" ? formatDate(exp.date) : "—"}</td>
+            <td data-label="Amount" class="text-right td-amount text-danger">฿${Number(exp.computedAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td data-label="Actions" class="text-center">
                 <button class="btn-action-icon btn-edit" onclick="openEditExpense('${exp.id}')" title="Edit">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -710,17 +710,18 @@ function renderInstallmentsView(data) {
         const catLabel = categoryStyles[inst.category]?.label || "Others";
 
         row.innerHTML = `
-            <td>
+            <td data-label="Product/Service">
                 <strong>${escapeHTML(inst.title)}</strong>
                 <span class="quick-item-meta">${catLabel}</span>
             </td>
-            <td><span class="badge badge-credit">${catLabel}</span></td>
-            <td class="td-amount">฿${Number(inst.totalAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-            <td class="td-amount text-danger">฿${Number(inst.monthlyAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-            <td>${inst.totalMonths} mo</td>
-            <td>${formatMonthYear(inst.startMonth)}</td>
-            <td>${statusBadge}</td>
-            <td class="text-center">
+            <td data-label="Creditor / Card">${escapeHTML(inst.creditor || '—')}</td>
+            <td data-label="Category"><span class="badge badge-credit">${catLabel}</span></td>
+            <td data-label="Total Value" class="td-amount">฿${Number(inst.totalAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td data-label="Monthly" class="td-amount text-danger">฿${Number(inst.monthlyAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td data-label="Months">${inst.totalMonths} mo</td>
+            <td data-label="Start">${formatMonthYear(inst.startMonth)}</td>
+            <td data-label="Status">${statusBadge}</td>
+            <td data-label="Actions" class="text-center">
                 <button class="btn-action-icon btn-edit" onclick="openEditInstallment('${inst.id}')" title="Edit">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -739,7 +740,7 @@ function renderInstallmentsView(data) {
     });
 
     if (tbody.children.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center no-data">No installment plans</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center no-data">No installment plans</td></tr>`;
     }
 }
 
@@ -941,6 +942,7 @@ window.openEditInstallment = function (id) {
 
     document.getElementById("modal-installment-id").value = inst.id;
     document.getElementById("modal-installment-title").value = inst.title;
+    document.getElementById("modal-installment-creditor").value = inst.creditor || "";
     document.getElementById("modal-installment-total-amount").value = inst.totalAmount;
     document.getElementById("modal-installment-interest").value = inst.interestRate || 0;
 
@@ -1332,6 +1334,7 @@ function setupEventListeners() {
         e.preventDefault();
         const id = document.getElementById("modal-installment-id").value;
         const title = document.getElementById("modal-installment-title").value;
+        const creditor = document.getElementById("modal-installment-creditor").value;
         const totalAmount = Number(document.getElementById("modal-installment-total-amount").value);
         const interestRate = Number(document.getElementById("modal-installment-interest").value) || 0;
         const monthlyAmount = Number(document.getElementById("modal-installment-monthly").value);
@@ -1348,10 +1351,10 @@ function setupEventListeners() {
         if (id) {
             const index = state.installments.findIndex(i => i.id === id);
             if (index !== -1) {
-                state.installments[index] = { id, title, totalAmount, monthlyAmount, totalMonths, startMonth, category };
+                state.installments[index] = { id, title, creditor, totalAmount, interestRate, monthlyAmount, totalMonths, startMonth, category };
             }
         } else {
-            state.installments.push({ id: generateId(), title, totalAmount, monthlyAmount, totalMonths, startMonth, category });
+            state.installments.push({ id: generateId(), title, creditor, totalAmount, interestRate, monthlyAmount, totalMonths, startMonth, category });
         }
 
         saveStateToLocalStorage();

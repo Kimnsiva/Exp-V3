@@ -1470,4 +1470,55 @@ input:checked + .slider:before {
         padding: 0.75rem 1.1rem;
         font-size: 0.9rem;
     }
+
+    /* Mobile Responsive Tables (Card Layout) */
+    .data-table thead {
+        display: none;
+    }
+    .data-table, .data-table tbody, .data-table tr, .data-table td {
+        display: block;
+        width: 100%;
+    }
+    .data-table tr {
+        margin-bottom: 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-md);
+        padding: 0.5rem;
+        background-color: var(--bg-primary);
+    }
+    .data-table tr:hover {
+        background-color: var(--bg-primary);
+    }
+    .data-table td {
+        text-align: right !important;
+        padding: 0.75rem 0.5rem;
+        position: relative;
+        border-bottom: 1px solid var(--bg-muted);
+    }
+    .data-table td:last-child {
+        border-bottom: none;
+    }
+    /* Action cell specific styling */
+    .data-table td.text-center {
+        text-align: right !important;
+    }
+    .data-table td::before {
+        content: attr(data-label);
+        position: absolute;
+        left: 0.5rem;
+        top: 0.75rem;
+        width: 45%;
+        padding-right: 10px;
+        white-space: nowrap;
+        text-align: left;
+        font-weight: 500;
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+    }
+    .data-table td[colspan] {
+        text-align: center !important;
+    }
+    .data-table td[colspan]::before {
+        content: none;
+    }
 }
